@@ -164,6 +164,7 @@ function renderMachine(){
   $('zero').disabled=!ready||locked||!s.homed;
   for(const [id,done] of [['step-xy',s.homed],['step-z',s.zero]]){$(id).classList.toggle('done',done);$(id).querySelector('i').textContent=done?'✓':'○';}
   $('emergency').disabled=!s.connected||offline;
+  $('dock-emergency').classList.toggle('hidden',!s.connected||offline);
   const canDraw=ready&&!locked&&s.homed&&s.zero;
   $('start').disabled=!canDraw||!job||!!job.errors.length;
   $('start').firstChild.textContent=remote?'Enviar e desenhar ':'Desenhar ';
@@ -330,6 +331,7 @@ $('start').onclick=()=>perform(async()=>{
 $('pause').onclick=()=>perform(()=>machine.pause(),{quiet:true});
 $('stop').onclick=()=>perform(()=>machine.cancel(),{quiet:true});
 $('emergency').onclick=()=>perform(()=>machine.emergency(),{quiet:true});
+$('dock-emergency').onclick=$('emergency').onclick;
 window.addEventListener('beforeunload',event=>{if(!server&&S().running){event.preventDefault();event.returnValue='';}});
 let installPrompt;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;$('install').classList.remove('hidden');});
