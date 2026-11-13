@@ -58,57 +58,125 @@ export function compensate(paths,tip,mode){
   if(closed.length&&!result.length)warnings.push('A ponta é demasiado larga: os contornos fechados desapareceram. Reduz a ponta ou aumenta o desenho.');
   return {paths:[...result.map(points=>({closed:true,points:toFloat(points)})),...structuredClone(open)],warnings,offset:(mode==='inside'?-1:1)*tip/2};
 }
-// Filled shapes (text in "letra preenchida"): the outline sits half a tip inside the shape and parallel
-// hatch lines cover the inside, so the ink matches the letter. Spacing slightly under the tip leaves no gaps.
+// ---------- Fills ----------
+// A filled shape keeps its ink inside the shape: the outline sits half a tip inside and a pattern covers
+// the interior. "solid" packs lines slightly closer than the tip so no paper shows through.
 export const HATCH_OVERLAP=.85;
-export function fillPaths(paths,tip){
+export const FILL_PATTERNS=Object.freeze([
+  ['none','Sem preenchimento'],['solid','Cheio'],['hatch','Linhas'],['cross','Quadriculado'],['waves','Ondas'],
+  ['zigzag','Ziguezague'],['concentric','Concêntrico'],['spiral','Espiral'],['dots','Pontos']]);
+const PATTERN_IDS=new Set(FILL_PATTERNS.map(p=>p[0]));
+export function normalizeFill(fill){
+  if(fill===true)return {pattern:'solid',spacing:2,angle:0};
+  const f=fill&&typeof fill==='object'?fill:{};
+  const n=(v,lo,hi,d)=>Number.isFinite(Number(v))&&Number(v)>=lo&&Number(v)<=hi?Number(v):d;
+  return {pattern:PATTERN_IDS.has(f.pattern)?f.pattern:'none',spacing:n(f.spacing,.1,50,2),angle:n(f.angle,-360,360,0)};
+}
+function clipOpen(lines,region){
+  if(!lines.length)return [];
+  const clip=new Clipper.Clipper(),tree=new Clipper.PolyTree();
+  clip.AddPaths(lines,Clipper.PolyType.ptSubject,false);clip.AddPaths(region,Clipper.PolyType.ptClip,true);
+  clip.Execute(Clipper.ClipType.ctIntersection,tree,Clipper.PolyFillType.pftNonZero,Clipper.PolyFillType.pftNonZero);
+  return Clipper.Clipper.OpenPathsFromPolyTree(tree).filter(p=>p.length>=2);
+}
+function ringBounds(rings){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const ring of rings)for(const p of ring){minX=Math.min(minX,p.X);minY=Math.min(minY,p.Y);maxX=Math.max(maxX,p.X);maxY=Math.max(maxY,p.Y);}
+  return {minX,minY,maxX,maxY};
+}
+// Parallel rows across the region, rotated by `angle`. `wave(u)` bends each row (0 for straight lines).
+// Returns clipped segments tagged with their row, in millimetres.
+function rows(region,spacingMM,angle,wave=()=>0,step=Infinity){
+  const a=angle*Math.PI/180,c=Math.cos(a),s=Math.sin(a),sp=spacingMM*SCALE;
+  const b=ringBounds(region),cx=(b.minX+b.maxX)/2,cy=(b.minY+b.maxY)/2,r=Math.hypot(b.maxX-b.minX,b.maxY-b.minY)/2+sp;
+  const lines=[],toWorld=(u,v)=>({X:Math.round(cx+u*c-v*s),Y:Math.round(cy+u*s+v*c)});
+  const du=Math.min(step*SCALE,2*r);
+  for(let v=-r+sp/2,row=0;v<r;v+=sp,row++){
+    const line=[];for(let u=-r;u<=r+1e-9;u+=du)line.push(toWorld(u,v+wave(u/SCALE)*SCALE));
+    if(line.length<2)line.push(toWorld(r,v+wave(r/SCALE)*SCALE));
+    lines.push(line);
+  }
+  // Recover each clipped segment's row from its first point in the rotated frame.
+  return clipOpen(lines,region).map(seg=>{
+    const p=seg[0],u=((p.X-cx)*c+(p.Y-cy)*s),v=(-(p.X-cx)*s+(p.Y-cy)*c)-wave(u/SCALE)*SCALE;
+    return {row:Math.round((v+r-sp/2)/sp),points:toFloat(seg)};
+  });
+}
+// Joins segments of neighbouring rows into continuous chains, so the pen does not lift for every row.
+// Only short hops are joined: they run along the edge, inside the half-tip margin of the outline.
+function joinRows(segments,spacing){
+  const byRow=new Map();
+  for(const s of segments){if(!byRow.has(s.row))byRow.set(s.row,[]);byRow.get(s.row).push(s.points);}
+  const keys=[...byRow.keys()].sort((a,b)=>a-b),used=new Set(),chains=[],maxHop=spacing*2.2;
+  for(const startKey of keys)for(const first of byRow.get(startKey)){
+    if(used.has(first))continue;
+    used.add(first);const chain=[...first];let key=startKey;
+    for(;;){
+      const end=chain.at(-1),next=byRow.get(key+1);if(!next)break;
+      let best=null,bestD=maxHop,flip=false;
+      for(const seg of next){if(used.has(seg))continue;
+        const d0=distance(end,seg[0]),d1=distance(end,seg.at(-1));
+        if(d0<bestD){best=seg;bestD=d0;flip=false;}if(d1<bestD){best=seg;bestD=d1;flip=true;}}
+      if(!best)break;
+      used.add(best);chain.push(...(flip?[...best].reverse():best));key++;
+    }
+    chains.push(chain);
+  }
+  return chains.map(points=>({closed:false,points}));
+}
+function patternPaths(region,pattern,spacing,angle,tip){
+  switch(pattern){
+    case 'solid':case 'hatch':return joinRows(rows(region,spacing,angle),spacing);
+    case 'cross':return [...joinRows(rows(region,spacing,angle),spacing),...joinRows(rows(region,spacing,angle+90),spacing)];
+    case 'waves':{const period=spacing*4,amp=spacing*.45;return joinRows(rows(region,spacing,angle,u=>amp*Math.sin(2*Math.PI*u/period),period/16),spacing);}
+    case 'zigzag':{const period=spacing*2,amp=spacing*.45;return joinRows(rows(region,spacing,angle,u=>{const t=((u/period)%1+1)%1;return amp*(t<.5?4*t-1:3-4*t);},period/2),spacing);}
+    case 'concentric':{
+      const out=[];let current=region;
+      for(let i=0;i<400;i++){
+        const next=[],offset=new Clipper.ClipperOffset(2,.015*SCALE);offset.AddPaths(current,Clipper.JoinType.jtRound,Clipper.EndType.etClosedPolygon);offset.Execute(next,-spacing*SCALE);
+        if(!next.length)break;out.push(...next.map(p=>({closed:true,points:toFloat(p)})));current=next;
+      }
+      return out;
+    }
+    case 'spiral':{
+      const b=ringBounds(region),cx=(b.minX+b.maxX)/2,cy=(b.minY+b.maxY)/2,R=Math.hypot(b.maxX-b.minX,b.maxY-b.minY)/2,pitch=spacing*SCALE;
+      const line=[];for(let t=0;;){const r=pitch*t/(2*Math.PI);if(r>R)break;line.push({X:Math.round(cx+r*Math.cos(t)),Y:Math.round(cy+r*Math.sin(t))});t+=Math.min(.35,(spacing*.6*SCALE)/Math.max(r,1));}
+      return clipOpen([line],region).map(p=>({closed:false,points:toFloat(p)}));
+    }
+    case 'dots':{
+      const b=ringBounds(region),sp=spacing*SCALE,radius=Math.max(Number(tip)*.6,spacing*.18),out=[];
+      // Dot centres must sit a full dot radius inside, so the dots stay within the outline.
+      const core=[],shrink=new Clipper.ClipperOffset(2,.015*SCALE);shrink.AddPaths(region,Clipper.JoinType.jtRound,Clipper.EndType.etClosedPolygon);shrink.Execute(core,-radius*SCALE);
+      for(let y=b.minY+sp/2,row=0;y<b.maxY;y+=sp*.866,row++)for(let x=b.minX+sp/2+(row%2?sp/2:0);x<b.maxX;x+=sp){
+        const point={X:Math.round(x),Y:Math.round(y)};
+        if(core.reduce((n,ring)=>n+(Clipper.Clipper.PointInPolygon(point,ring)!==0?(Clipper.Clipper.Orientation(ring)?1:-1):0),0)<=0)continue;
+        const cxm=x/SCALE,cym=y/SCALE;
+        out.push({closed:true,points:Array.from({length:10},(_,i)=>({x:cxm+radius*Math.cos(i/10*2*Math.PI),y:cym+radius*Math.sin(i/10*2*Math.PI)}))});
+      }
+      return out;
+    }
+    default:return [];
+  }
+}
+// Fills the closed paths with a pattern. Returns the inner outline plus the pattern, in millimetres.
+export function fillRegion(paths,tip,fill){
+  const spec=normalizeFill(fill);
   const rings=paths.filter(p=>p.closed&&p.points.length>=3).map(p=>toInt(p.points));
-  if(!rings.length)return {paths:[],warnings:[]};
+  if(!rings.length||spec.pattern==='none')return {paths:[],warnings:[]};
   const union=new Clipper.Clipper(),region=[];
   union.AddPaths(rings,Clipper.PolyType.ptSubject,true);
   union.Execute(Clipper.ClipType.ctUnion,region,Clipper.PolyFillType.pftNonZero,Clipper.PolyFillType.pftNonZero);
   let inner=[];
   const offset=new Clipper.ClipperOffset(2,.015*SCALE);offset.AddPaths(region,Clipper.JoinType.jtRound,Clipper.EndType.etClosedPolygon);offset.Execute(inner,-Number(tip)*SCALE/2);
   const warnings=[];
-  if(!inner.length){warnings.push('As letras são mais finas do que a ponta: só o contorno será desenhado. Aumenta o texto ou usa uma ponta mais fina.');inner=region;}
+  if(!inner.length){warnings.push('Há formas mais finas do que a ponta: só o contorno será desenhado. Aumenta-as ou usa uma ponta mais fina.');inner=region;}
+  const spacing=spec.pattern==='solid'?Math.max(.05,Number(tip)*HATCH_OVERLAP):Math.max(Number(tip)*HATCH_OVERLAP,spec.spacing);
   const out=inner.map(points=>({closed:true,points:toFloat(points)}));
-  const spacing=Math.max(.05,Number(tip)*HATCH_OVERLAP)*SCALE;
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  for(const ring of inner)for(const p of ring){minX=Math.min(minX,p.X);minY=Math.min(minY,p.Y);maxX=Math.max(maxX,p.X);maxY=Math.max(maxY,p.Y);}
-  const lines=[];
-  for(let y=minY+spacing/2;y<maxY;y+=spacing)lines.push([{X:Math.floor(minX-SCALE),Y:Math.round(y)},{X:Math.ceil(maxX+SCALE),Y:Math.round(y)}]);
-  if(lines.length){
-    const clip=new Clipper.Clipper(),tree=new Clipper.PolyTree();
-    clip.AddPaths(lines,Clipper.PolyType.ptSubject,false);clip.AddPaths(inner,Clipper.PolyType.ptClip,true);
-    clip.Execute(Clipper.ClipType.ctIntersection,tree,Clipper.PolyFillType.pftNonZero,Clipper.PolyFillType.pftNonZero);
-    const segments=Clipper.Clipper.OpenPathsFromPolyTree(tree).filter(s=>s.length>=2).map(s=>toFloat(s[0].X<=s.at(-1).X?s:[...s].reverse()));
-    out.push(...zigzag(segments,spacing/SCALE).map(points=>({closed:false,points})));
-  }
+  out.push(...patternPaths(inner,spec.pattern,spacing,spec.pattern==='solid'?0:spec.angle,tip));
   return {paths:out,warnings};
 }
-// Joins hatch segments of neighbouring rows into continuous zig-zags, so the pen does not lift for every line.
-// Only short hops are joined: they run along the edge, inside the half-tip margin of the outline.
-function zigzag(segments,spacing){
-  const rows=new Map();
-  for(const s of segments){const key=Math.round(s[0].y/spacing);if(!rows.has(key))rows.set(key,[]);rows.get(key).push(s);}
-  const keys=[...rows.keys()].sort((a,b)=>a-b),used=new Set(),chains=[],maxHop=spacing*2.2;
-  for(const key of keys)rows.get(key).sort((a,b)=>a[0].x-b[0].x);
-  for(const startKey of keys)for(const first of rows.get(startKey)){
-    if(used.has(first))continue;
-    used.add(first);let chain=[...first],key=startKey;
-    for(;;){
-      const end=chain.at(-1),next=rows.get(key+1);if(!next)break;
-      let best=null,bestD=maxHop,flip=false;
-      for(const s of next){if(used.has(s))continue;
-        const d0=distance(end,s[0]),d1=distance(end,s.at(-1));
-        if(d0<bestD){best=s;bestD=d0;flip=false;}if(d1<bestD){best=s;bestD=d1;flip=true;}}
-      if(!best)break;
-      used.add(best);chain.push(...(flip?[...best].reverse():best));key++;
-    }
-    chains.push(chain);
-  }
-  return chains;
-}
+// Text "letra preenchida" and older projects: solid fill.
+export function fillPaths(paths,tip){return fillRegion(paths,tip,{pattern:'solid'});}
 export function orderPaths(paths){
   const pending=structuredClone(paths),result=[];let cursor={x:0,y:0};
   while(pending.length){let selected=0,best=Infinity,reverse=false,start=0;
@@ -123,21 +191,29 @@ export function orderPaths(paths){
   }
   return result;
 }
-export function createJob(source,options={}){
+export function checkSettings(options={},{placement=true}={}){
   const settings={...DEFAULTS,...options};
-  for(const key of ['tip','width','drawSpeed','travelSpeed','lift','bedWidth','bedHeight','paperWidth','paperHeight']){
+  for(const key of ['tip','drawSpeed','travelSpeed','lift','bedWidth','bedHeight','paperWidth','paperHeight',...(placement?['width']:[])]){
     if(!Number.isFinite(Number(settings[key]))||Number(settings[key])<=0)throw Error('Revê os valores: dimensões, velocidade e ponta devem ser positivas.');
   }
-  if(settings.tip>10||settings.width>2000||settings.drawSpeed>80||settings.travelSpeed>80||settings.lift>20||settings.lift<.2||settings.drawZ>settings.lift||settings.drawZ< -2)throw Error('Há um valor fora do intervalo permitido.');
+  if(settings.tip>10||(placement&&settings.width>2000)||settings.drawSpeed>80||settings.travelSpeed>80||settings.lift>20||settings.lift<.2||settings.drawZ>settings.lift||settings.drawZ< -2)throw Error('Há um valor fora do intervalo permitido.');
   if(settings.bedWidth>300||settings.bedHeight>300||settings.bedWidth<20||settings.bedHeight<20)throw Error('A área útil desta CR-10 deve ficar entre 20 e 300 mm por eixo.');
   if(!Number.isFinite(Number(settings.bedTarget))||settings.bedTarget<0||settings.bedTarget>60)throw Error('A temperatura opcional da cama deve ficar entre 0 e 60 °C.');
   for(const key of ['originX','originY','drawZ','paperX','paperY','rotation'])if(!Number.isFinite(Number(settings[key])))throw Error('As coordenadas devem ser números.');
+  return settings;
+}
+// Single drawing placed by the global width/origin/rotation (older projects and G-code tests).
+export function createJob(source,options={}){
+  const settings=checkSettings(options);
   const original=placePaths(source,settings);
   const filled=fillPaths(original.filter(p=>p.fill&&p.closed),Number(settings.tip));
   const offset=compensate(original.filter(p=>!(p.fill&&p.closed)),Number(settings.tip),settings.compensation);
-  offset.warnings.push(...filled.warnings);
-  const paths=orderPaths([...offset.paths,...filled.paths].filter(p=>p.points.length>=2));
-  if(!paths.length)throw Error(offset.warnings.at(-1)||'Não existem percursos para desenhar.');
+  return finishJob([...offset.paths,...filled.paths],original,settings,[...offset.warnings,...filled.warnings],offset.offset);
+}
+// Orders the ink, checks it against the machine and the paper, and estimates the time.
+export function finishJob(ink,original,settings,warnings=[],offset=0){
+  const paths=orderPaths(ink.filter(p=>p.points.length>=2));
+  if(!paths.length)throw Error(warnings.at(-1)||'Não existem percursos para desenhar.');
   const b=bounds(paths),r=Number(settings.tip)/2,errors=[];
   if(b.minX-r<0||b.minY-r<0||b.maxX+r>settings.bedWidth||b.maxY+r>settings.bedHeight)errors.push('O traço da caneta sai da área da máquina. Ajusta a posição, o tamanho ou a ponta.');
   if(b.minX-r<settings.paperX||b.minY-r<settings.paperY||b.maxX+r>Number(settings.paperX)+Number(settings.paperWidth)||b.maxY+r>Number(settings.paperY)+Number(settings.paperHeight))errors.push('Há tinta fora do papel. Ajusta a posição ou o tamanho do desenho.');
@@ -145,7 +221,7 @@ export function createJob(source,options={}){
   for(const p of paths){travel+=distance(cursor,p.points[0]);for(let i=1;i<p.points.length;i++)drawing+=distance(p.points[i-1],p.points[i]);if(p.closed)drawing+=distance(p.points.at(-1),p.points[0]);cursor=p.closed?p.points[0]:p.points.at(-1);}
   const seconds=drawing/settings.drawSpeed+travel/settings.travelSpeed+paths.length*2*Math.abs(settings.lift-settings.drawZ)/3
     +Math.abs(10-settings.lift)/3+Math.abs(settings.bedHeight-cursor.y)/settings.travelSpeed;
-  return {settings,original,paths,bounds:b,warnings:offset.warnings,errors,offset:offset.offset,metrics:{drawing,travel,seconds,strokes:paths.length,points:paths.reduce((s,p)=>s+p.points.length,0)}};
+  return {settings,original,paths,bounds:b,warnings:[...new Set(warnings)],errors,offset,metrics:{drawing,travel,seconds,strokes:paths.length,points:paths.reduce((s,p)=>s+p.points.length,0)}};
 }
 const number=v=>Number(v).toFixed(3).replace(/\.?0+$/,'')||'0';
 export function jobCommands(job,{origin={x:0,y:0}}={}){

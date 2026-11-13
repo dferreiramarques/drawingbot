@@ -1,16 +1,17 @@
-import {DEFAULTS,createJob,demoPaths,exportGcode,validateProject,PROJECT_FORMAT} from './geometry.mjs';
+import {DEFAULTS,demoPaths,exportGcode,FILL_PATTERNS,fillRegion,normalizeFill} from './geometry.mjs';
+import {composeInk,composeJob,makeObject,shapePaths,validateDocument,documentProject,OBJECT_KINDS} from './document.mjs';
 import {importSVG} from './svg-import.mjs';
 import {MarlinLink,SimulatedLink,WebSerialTransport} from './serial.mjs';
 import {Machine} from './machine.mjs';
 import {RemoteMachine,detectServer} from './remote.mjs';
 import {createTextTool} from './app-text.mjs';
+import {createEditor,TOOLS} from './editor.mjs';
 
 const $=id=>document.getElementById(id),all=selector=>[...document.querySelectorAll(selector)];
-const ns='http://www.w3.org/2000/svg';
-const STORAGE='drawingbot-settings-v1',OLD_STORAGE='pen-studio-settings-v1';
-let settings={...DEFAULTS},source=demoPaths(),fileName='Roseta de estudo.svg',importWarnings=[],textSpec=null;
+const STORAGE='drawingbot-settings-v1',OLD_STORAGE='pen-studio-settings-v1',DOC_STORAGE='drawingbot-document-v2';
+let settings={...DEFAULTS},docName='Desenho';
 try{const saved=JSON.parse(localStorage.getItem(STORAGE)||localStorage.getItem(OLD_STORAGE)||'null');if(saved)for(const key of Object.keys(DEFAULTS))if(key in saved)settings[key]=saved[key];}catch{}
-let job=null,server=null,zoom=1,showOriginal=true,toastTimer,pinOpen=false;
+let job=null,server=null,showOriginal=true,toastTimer,pinOpen=false,finalizeTimer=0,saveTimer=0;
 const logs=[];
 const handlers={onChange:()=>renderMachine(),onNotice:n=>toast(n.message,n.error),onLine:log};
 let machine=new Machine(handlers);
@@ -24,61 +25,133 @@ function readSettings(){
   try{localStorage.setItem(STORAGE,JSON.stringify(settings));}catch{}
 }
 function writeSettings(){for(const key of Object.keys(DEFAULTS))if($(key))$(key).value=settings[key];}
-function project(){return {format:PROJECT_FORMAT,version:1,fileName,settings:{...settings},paths:source,...(textSpec?{text:textSpec}:{})};}
+function project(){return documentProject({fileName:docName,settings,objects:editor.objects});}
+
+// ---------- Board ----------
+const editor=createEditor({svg:$('preview'),onChange:kind=>refresh(kind),onSelect:()=>{renderPanel();renderMachine();},onTool:renderTools});
+function penPosition(){const p=S().position;return p.x!==null&&p.y!==null?p:null;}
+// Fast path: ink comes from per-object caches, so moving things stays smooth. The full job (order,
+// limits and time) is rebuilt shortly after the last change.
+function refresh(kind='commit'){
+  readSettings();
+  let ink=[],original=[];
+  try{({ink,original}=composeInk(editor.objects,settings));}catch{}
+  editor.draw({settings,ink,original,errors:!!job?.errors.length,pen:penPosition(),showOriginal});
+  $('board-hint').classList.toggle('hidden',editor.objects.length>0);
+  if(kind!=='live')renderPanel();
+  clearTimeout(finalizeTimer);finalizeTimer=setTimeout(finalize,kind==='live'?250:30);
+  if(kind!=='live'){clearTimeout(saveTimer);saveTimer=setTimeout(autosave,500);}
+}
+function finalize(){
+  clearTimeout(finalizeTimer);
+  const notice=(cls,mark,text)=>{$('job-notice').className='job-notice'+cls;$('job-notice').children[0].textContent=mark;$('job-notice').querySelector('p').textContent=text;};
+  try{
+    job=composeJob(editor.objects,settings);
+    $('size-stat').textContent=`${format(job.bounds.width)} × ${format(job.bounds.height)} mm`;$('paths-stat').textContent=job.metrics.strokes;$('time-stat').textContent=duration(job.metrics.seconds);
+    const messages=[...job.errors,...job.warnings];
+    notice(job.errors.length?' error':messages.length?' warning':'',job.errors.length?'!':messages.length?'i':'✓',messages.length?messages.join(' '):'O desenho e a largura da tinta cabem no papel.');
+  }catch(error){job=null;notice(editor.objects.length?' error':'',editor.objects.length?'!':'i',error.message);for(const id of ['size-stat','paths-stat','time-stat'])$(id).textContent='—';}
+  editor.draw({errors:!!job?.errors.length});
+  renderMachine();
+}
 function prepare(){
   readSettings();
-  try{job=createJob(source,settings);$('size-stat').textContent=`${format(job.bounds.width)} × ${format(job.bounds.height)} mm`;$('paths-stat').textContent=job.metrics.strokes;
-    $('time-stat').textContent=duration(job.metrics.seconds);
-    const messages=[...job.errors,...importWarnings,...job.warnings];
-    $('job-notice').className='job-notice'+(job.errors.length?' error':messages.length?' warning':'');
-    $('job-notice').children[0].textContent=job.errors.length?'!':messages.length?'i':'✓';
-    $('job-notice').querySelector('p').textContent=messages.length?messages.join(' '):'O desenho e a largura da tinta cabem no papel.';
-  }catch(error){job=null;$('job-notice').className='job-notice error';$('job-notice').children[0].textContent='!';$('job-notice').querySelector('p').textContent=error.message;$('size-stat').textContent='—';$('paths-stat').textContent='—';$('time-stat').textContent='—';}
   const helpers={center:'A ponta segue a linha original. Ideal para ilustrações e linhas abertas.',inside:`O percurso entra ${format(settings.tip/2,3)} mm. A borda exterior da tinta coincide com o contorno.`,outside:`O percurso sai ${format(settings.tip/2,3)} mm. A borda interior da tinta coincide com o contorno.`};
   $('compensation-help').textContent=helpers[settings.compensation]||helpers.center;
   const inset=settings.compensation==='inside'?5:settings.compensation==='outside'?-5:0;
   for(const [key,value] of Object.entries({x:15+inset,y:8+inset,width:36-inset*2,height:34-inset*2}))$('offset-demo').setAttribute(key,value);
   $('tip-line').style.height=Math.max(1,Math.min(12,settings.tip*5))+'px';
   all('[data-tip]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.tip)===settings.tip));
-  $('file-name').textContent=fileName;$('text-tool-label').textContent=textSpec?'Editar texto':'Escrever texto';$('bed-size').textContent=`${format(settings.bedWidth)} × ${format(settings.bedHeight)} mm`;
-  renderPreview();renderMachine();
+  $('bed-size').textContent=`${format(settings.bedWidth)} × ${format(settings.bedHeight)} mm`;
+  renderFillTiles();refresh();
 }
 function duration(seconds){return seconds<60?`~ ${Math.ceil(seconds)} s`:`~ ${Math.ceil(seconds/60)} min`;}
-function svgElement(tag,attrs={}){const node=document.createElementNS(ns,tag);for(const [name,value] of Object.entries(attrs))node.setAttribute(name,value);return node;}
-function pathD(path){return path.points.map((p,i)=>(i?'L':'M')+p.x.toFixed(3)+' '+p.y.toFixed(3)).join(' ')+(path.closed?' Z':'');}
-function renderPreview(){
-  const svg=$('preview');svg.replaceChildren();
-  const w=Number(settings.bedWidth)||300,h=Number(settings.bedHeight)||300,size=Math.max(w,h),span=(size+30)/zoom;
-  const center=zoom>1&&job?{x:(job.bounds.minX+job.bounds.maxX)/2,y:h-(job.bounds.minY+job.bounds.maxY)/2}:{x:w/2,y:h/2};
-  svg.setAttribute('viewBox',`${center.x-span/2} ${center.y-span/2} ${span} ${span}`);
-  const defs=svgElement('defs'),grid=svgElement('pattern',{id:'grid',width:10,height:10,patternUnits:'userSpaceOnUse'});
-  grid.append(svgElement('path',{d:'M10 0H0V10',class:'pv-grid','stroke-width':.25}));defs.append(grid);svg.append(defs);
-  svg.append(svgElement('rect',{x:0,y:0,width:w,height:h,class:'pv-bed',rx:1,'stroke-width':.5}));
-  const paper=svgElement('g',{transform:`translate(0 ${h}) scale(1 -1)`});
-  paper.append(svgElement('rect',{x:settings.paperX,y:settings.paperY,width:settings.paperWidth,height:settings.paperHeight,class:'pv-paper','stroke-width':.5}));
-  paper.append(svgElement('rect',{x:0,y:0,width:w,height:h,fill:'url(#grid)'}));
-  if(job){
-    if(showOriginal)for(const p of job.original)paper.append(svgElement('path',{d:pathD(p),class:'pv-original','stroke-width':.3,'stroke-dasharray':'1.5 1.5'}));
-    for(const p of job.paths)paper.append(svgElement('path',{d:pathD(p),class:job.errors.length?'pv-ink error':'pv-ink','stroke-width':settings.tip,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.88}));
+function renderPreview(){editor.draw({pen:penPosition()});$('zoom-fit').textContent=Math.round(editor.zoom*100)+'%';$('original-legend').classList.toggle('hidden',!showOriginal);}
+function autosave(){try{localStorage.setItem(DOC_STORAGE,JSON.stringify(project()));}catch{}}
+function paperCenter(){return {x:Number(settings.paperX)+Number(settings.paperWidth)/2,y:Number(settings.paperY)+Number(settings.paperHeight)/2};}
+
+// ---------- Tools, objects and properties ----------
+function renderTools(tool){all('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tool)));}
+all('[data-tool]').forEach(b=>b.onclick=()=>editor.setTool(b.dataset.tool));
+const KIND_MARK={rect:'▭',ellipse:'◯',polygon:'⬡',star:'☆',heart:'♡',line:'╱',freehand:'∿',svg:'◇',text:'Aa'};
+function renderPanel(){
+  const list=editor.objects,sel=editor.selected;
+  $('object-count').textContent=list.length;$('objects-empty').classList.toggle('hidden',list.length>0);
+  const ul=$('object-list');ul.replaceChildren();
+  for(const o of [...list].reverse()){
+    const li=document.createElement('li'),b=document.createElement('button');
+    b.setAttribute('aria-current',String(o.id===sel?.id));b.onclick=()=>editor.select(o.id);
+    const kind=document.createElement('span');kind.className='kind';kind.textContent=KIND_MARK[o.kind]||'·';
+    const name=document.createElement('span');name.className='name';name.textContent=o.name;
+    const meta=document.createElement('span');meta.className='meta';meta.textContent=`${format(o.w)}×${format(o.h)}`;
+    b.append(kind,name,meta);li.append(b);ul.append(li);
   }
-  const position=S().position;
-  if(position.x!==null&&position.y!==null){
-    const marker=svgElement('g',{transform:`translate(${position.x} ${position.y})`,class:'pv-pen','stroke-width':.65});
-    marker.append(svgElement('circle',{r:2}),svgElement('path',{d:'M-4 0H4M0-4V4'}));paper.append(marker);
-  }
-  svg.append(paper);
-  for(let i=0;i<=w;i+=50){const label=svgElement('text',{x:i,y:h+11,'font-size':3.5,class:'pv-label','text-anchor':'middle'});label.textContent=i;svg.append(label);}
-  for(let i=0;i<=h;i+=50){const label=svgElement('text',{x:-4,y:h-i+2.5,'font-size':3.5,class:'pv-label','text-anchor':'end'});label.textContent=i;svg.append(label);}
-  const xLabel=svgElement('text',{x:w+6,y:h+2.5,'font-size':4,class:'pv-axis'});xLabel.textContent='X';svg.append(xLabel);
-  const yLabel=svgElement('text',{x:-2,y:-6,'font-size':4,class:'pv-axis'});yLabel.textContent='Y';svg.append(yLabel);
-  $('zoom-fit').textContent=Math.round(zoom*100)+'%';$('original-legend').classList.toggle('hidden',!showOriginal);
+  $('undo').disabled=!editor.canUndo;$('redo').disabled=!editor.canRedo;
+  $('inspector').classList.toggle('hidden',!sel);if(!sel)return;
+  $('inspector-title').textContent=sel.name;
+  const set=(id,v)=>{if(document.activeElement!==$(id))$(id).value=v;};
+  set('obj-x',sel.x);set('obj-y',sel.y);set('obj-w',sel.w);set('obj-h',sel.h);set('obj-rotation',sel.rotation);$('obj-ratio').checked=!!sel.keepRatio;
+  const params=['polygon','star'].includes(sel.kind);$('obj-params').classList.toggle('hidden',!params);
+  $('obj-sides-field').classList.toggle('hidden',sel.kind!=='polygon');$('obj-points-field').classList.toggle('hidden',sel.kind!=='star');$('obj-inner-field').classList.toggle('hidden',sel.kind!=='star');
+  if(params){set('obj-sides',sel.params?.sides??6);set('obj-points',sel.params?.points??5);set('obj-inner',Math.round((sel.params?.inner??.45)*100));}
+  $('obj-edit-text').classList.toggle('hidden',sel.kind!=='text');
+  const closed=sel.paths.some(p=>p.closed),fill=normalizeFill(sel.fill);
+  $('fill-patterns').classList.toggle('hidden',!closed);$('fill-note').classList.toggle('hidden',closed);
+  all('#fill-patterns [data-pattern]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.pattern===fill.pattern)));
+  const options=closed&&!['none','solid'].includes(fill.pattern);$('fill-options').classList.toggle('hidden',!options);
+  set('fill-spacing',fill.spacing);set('fill-angle',fill.angle);
+  $('fill-angle').disabled=['concentric','spiral','dots'].includes(fill.pattern);
+  const i=list.findIndex(o=>o.id===sel.id);$('obj-up').disabled=i<=0;$('obj-down').disabled=i>=list.length-1;
 }
-let lastPosition='';
+// Pattern tiles: each tile is the real fill of a small circle.
+let tilesFor='';
+function renderFillTiles(){
+  const key=String(settings.tip);if(tilesFor===key)return;tilesFor=key;
+  const host=$('fill-patterns');host.replaceChildren();
+  const circle=[{closed:true,points:shapePaths('ellipse')[0].points.map(v=>({x:v.x*24,y:v.y*24}))}];
+  for(const [pattern,label] of FILL_PATTERNS){
+    const b=document.createElement('button');b.type='button';b.dataset.pattern=pattern;b.setAttribute('role','radio');b.title=label;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-1 -1 26 26');svg.setAttribute('aria-hidden','true');
+    const ink=pattern==='none'?circle:fillRegion(circle,.6,{pattern,spacing:pattern==='dots'?4:2.6,angle:pattern==='solid'?0:30}).paths;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class','fp-ink');
+    path.setAttribute('d',ink.map(p=>p.points.map((v,i)=>(i?'L':'M')+v.x.toFixed(2)+' '+(24-v.y).toFixed(2)).join('')+(p.closed?'Z':'')).join(''));
+    svg.append(path);const span=document.createElement('span');span.textContent=label;b.append(svg,span);
+    b.onclick=()=>{const sel=editor.selected;if(sel)editor.update(sel.id,{fill:{...normalizeFill(sel.fill),pattern}});};
+    host.append(b);
+  }
+}
+function numberInput(id,apply){
+  const input=$(id);let pending=null;
+  input.addEventListener('input',()=>{const v=Number(input.value);if(input.value===''||!Number.isFinite(v))return;const sel=editor.selected;if(!sel)return;
+    if(!pending){pending=sel.id;editor.update(sel.id,apply(sel,v));}else editor.update(sel.id,apply(sel,v),{commit:false});});
+  input.addEventListener('change',()=>{pending=null;renderPanel();});
+}
+numberInput('obj-x',(o,v)=>({x:v}));numberInput('obj-y',(o,v)=>({y:v}));
+numberInput('obj-w',(o,v)=>{const w=Math.max(.1,v);return o.keepRatio&&o.w>0?{w,h:Math.round(o.h*w/o.w*100)/100,x:o.x+(o.w-w)/2,y:o.y+(o.h-o.h*w/o.w)/2}:{w,x:o.x+(o.w-w)/2};});
+numberInput('obj-h',(o,v)=>{const h=Math.max(.1,v);return o.keepRatio&&o.h>0?{h,w:Math.round(o.w*h/o.h*100)/100,x:o.x+(o.w-o.w*h/o.h)/2,y:o.y+(o.h-h)/2}:{h,y:o.y+(o.h-h)/2};});
+numberInput('obj-rotation',(o,v)=>({rotation:((v%360)+540)%360-180}));
+const reshape=(o,params)=>({params,paths:shapePaths(o.kind,params)});
+numberInput('obj-sides',(o,v)=>reshape(o,{...o.params,sides:Math.round(Math.min(24,Math.max(3,v)))}));
+numberInput('obj-points',(o,v)=>reshape(o,{...o.params,points:Math.round(Math.min(24,Math.max(3,v)))}));
+numberInput('obj-inner',(o,v)=>reshape(o,{...o.params,inner:Math.min(.95,Math.max(.1,v/100))}));
+numberInput('fill-spacing',(o,v)=>({fill:{...normalizeFill(o.fill),spacing:Math.min(50,Math.max(.3,v))}}));
+numberInput('fill-angle',(o,v)=>({fill:{...normalizeFill(o.fill),angle:v}}));
+$('obj-ratio').onchange=()=>{const sel=editor.selected;if(sel)editor.update(sel.id,{keepRatio:$('obj-ratio').checked});};
+$('obj-delete').onclick=()=>{const sel=editor.selected;if(sel)editor.remove(sel.id);};
+$('obj-duplicate').onclick=()=>editor.duplicate();
+$('obj-up').onclick=()=>{const sel=editor.selected;if(sel)editor.move(sel.id,-1);};
+$('obj-down').onclick=()=>{const sel=editor.selected;if(sel)editor.move(sel.id,1);};
+$('undo').onclick=()=>editor.undo();$('redo').onclick=()=>editor.redo();
+$('file-name').oninput=()=>{docName=$('file-name').value.trim()||'Desenho';clearTimeout(saveTimer);saveTimer=setTimeout(autosave,500);};
+function setDocName(name){docName=String(name||'Desenho').replace(/\.(svg|json)$/i,'').replace(/\.(drawingbot|pen-studio)$/i,'').slice(0,80)||'Desenho';$('file-name').value=docName;}
+function exampleObject(){const c=paperCenter();return makeObject('svg',{paths:demoPaths(),x:c.x-60,y:c.y-60,w:120,h:120,name:'Roseta de estudo'});}
+
+let renderedMachine=null;
 function renderMachine(){
   const s=S(),remote=!!server,offline=remote&&!machine.online;
   const ready=s.connected&&!s.fault&&!offline,locked=s.busy||s.running||s.connecting||offline;
   const key=JSON.stringify(s.position);
-  if(key!==lastPosition){lastPosition=key;for(const axis of ['x','y','z'])$('pos-'+axis).textContent=s.position[axis]===null?'—':format(s.position[axis],2);renderPreview();}
+  if(key!==renderedMachine){renderedMachine=key;for(const axis of ['x','y','z'])$('pos-'+axis).textContent=s.position[axis]===null?'—':format(s.position[axis],2);renderPreview();}
   $('connection-badge').className='status-badge'+(s.connected&&!offline?(s.simulated?' sim':' live'):'');
   const label=offline?'DrawingBot sem ligação':s.connecting?'A ligar…':s.connected?(s.simulated?'Simulação':'USB ligada'):s.fault?'Verificar ligação':'Desligada';
   $('connection-badge').replaceChildren(document.createElement('i'),document.createTextNode((remote&&!offline?'DrawingBot · ':'')+label));
@@ -87,7 +160,8 @@ function renderMachine(){
   $('offline-note').classList.toggle('hidden',s.connected);
   $('simulate').classList.toggle('hidden',remote);
   $('offline-copy').textContent=remote?'Liga a CR-10 por USB ao DrawingBot. A ligação é feita automaticamente.':'Liga a CR-10 por USB para controlar os eixos e enviar o desenho.';
-  for(const id of ['home','zero','pen-up','bed-off','bed-apply','endstops','release','use-position'])$(id).disabled=!ready||locked;
+  for(const id of ['home','zero','pen-up','bed-off','bed-apply','endstops','release'])$(id).disabled=!ready||locked;
+  $('use-position').disabled=!ready||locked||!editor.selected;
   $('pen-down').disabled=!ready||locked||!s.zero;
   all('[data-jog]').forEach(b=>b.disabled=!ready||locked);
   $('zero').disabled=!ready||locked||!s.homed;
@@ -101,9 +175,11 @@ function renderMachine(){
   $('pause').classList.toggle('hidden',!s.running);$('stop').classList.toggle('hidden',!s.running);$('start').classList.toggle('hidden',s.running);
   $('pause').textContent=s.runState==='paused'?'Continuar':'Pausar';$('pause').disabled=['pausing','stopping'].includes(s.runState)||offline;
   $('stop').disabled=offline;
-  document.body.classList.toggle('busy',s.busy||s.running);$('design-settings').disabled=s.running&&!remote;
+  const editingLocked=s.running&&!remote;
+  document.body.classList.toggle('busy',s.busy||s.running);$('design-settings').disabled=editingLocked;editor.setLocked(editingLocked);
   $('bedWidth').disabled=s.running;$('bedHeight').disabled=s.running;$('bedTarget').disabled=s.running;
-  for(const id of ['import','text-tool','load-project','example'])$(id).disabled=s.running&&!remote;
+  for(const id of ['import','text-tool','load-project','example','new-drawing'])$(id).disabled=editingLocked;
+  all('[data-tool]').forEach(b=>b.disabled=editingLocked);
   const titles={running:s.simulated?'A simular o desenho…':'A desenhar…',pausing:'A levantar a caneta para pausar…',paused:'Em pausa · caneta levantada',stopping:'A terminar os movimentos em fila…',complete:s.simulated?'Simulação concluída':'Desenho concluído',cancelled:'Trabalho terminado · caneta levantada',error:'Trabalho interrompido'};
   $('run-title').textContent=offline?'Sem ligação ao DrawingBot':titles[s.runState]||(!s.connected?'Pronto para preparar a máquina':!s.homed?'Faz a origem X/Y':!s.zero?'Define o contacto da caneta':'Tudo pronto para desenhar');
   const jobName=s.job?.name?` · ${s.job.name}`:'';
@@ -165,25 +241,33 @@ function modal(title,body,action,label='Continuar'){
 }
 function showHelp(){
   modal('Do ecrã ao papel.',`<p>O DrawingBot prepara e envia desenhos para a tua CR-10 com o firmware de desenho.</p>
+    <h3>Desenhar na mesa</h3><p>Escolhe uma ferramenta na barra da mesa e arrasta: retângulo, elipse, polígono, estrela, coração, linha ou mão livre. «Aa» escreve texto e a seta importa um SVG (também podes arrastar o ficheiro para a mesa). Com «Selecionar» moves os objetos, os cantos mudam o tamanho e a pega redonda roda. Shift mantém a proporção ou roda de 15 em 15°. Delete apaga, Ctrl+Z desfaz, Ctrl+D duplica, as setas movem 1 mm (Shift: 10 mm).</p>
+    <h3>Preenchimentos</h3><p>Qualquer forma fechada pode ser preenchida: cheio, linhas, quadriculado, ondas, ziguezague, concêntrico, espiral ou pontos. O contorno fica meia ponta para dentro, por isso a tinta respeita o tamanho da forma.</p>
     <h3>1 · Liga e define as referências</h3><p>No computador ligado por USB, usa Chrome ou Edge. Com o DrawingBot (Raspberry Pi) a CR-10 liga-se ao Pi e abres a app em <strong>http://drawingbot.local</strong> a partir de qualquer browser da rede. Se não houver USB, exporta o G-code e usa o cartão SD. A origem e o zero Z nunca são recuperados automaticamente depois de um reinício.</p>
     <h3>2 · Deixa a caneta trabalhar pelo peso</h3><p>Com a caneta levantada, faz a origem X/Y. Aproxima a ponta ao papel em passos de 0,1 mm e usa «Definir zero Z». A app define o zero e levanta a caneta. Deixa a folga do suporte absorver as variações.</p>
-    <h3>3 · Escolhe a ponta e a compensação</h3><p>«Centro do traço» segue as linhas do SVG. «Por dentro» e «Por fora» deslocam os contornos fechados em metade da espessura real da ponta. Linhas abertas mantêm o eixo. Contornos totalmente contidos são tratados como recortes; formas sobrepostas são unidas.</p>
-    <h3>No DrawingBot</h3><p>«Enviar para o DrawingBot» guarda o projeto no Pi. O desenho corre no Pi: podes fechar o browser ou bloquear o telemóvel sem interromper o trabalho, e voltar a abrir a página para acompanhar, pausar ou terminar.</p>
-    <h3>SVG e papel</h3><p>Importa caminhos, linhas e formas simples. Converte texto e símbolos em caminhos antes de exportar o SVG. O preenchimento de áreas não é gerado: a app desenha os contornos. Define onde o papel começa na cama e verifica a pré-visualização antes de enviar.</p>
+    <h3>3 · Escolhe a ponta e a compensação</h3><p>«Centro do traço» segue as linhas. «Por dentro» e «Por fora» deslocam os contornos fechados sem preenchimento em metade da espessura real da ponta. Linhas abertas mantêm o eixo.</p>
+    <h3>No DrawingBot</h3><p>«Enviar para o DrawingBot» guarda o desenho no Pi. O desenho corre no Pi: podes fechar o browser ou bloquear o telemóvel sem interromper o trabalho, e voltar a abrir a página para acompanhar, pausar ou terminar.</p>
     <h3>Ao terminar</h3><p>No fim de um desenho completo, a caneta sobe para Z = 10 mm. Só depois a cama avança para o máximo Y configurado (300 mm por defeito). X mantém a última posição. Esta sequência também faz parte do G-code exportado.</p>
     <h3>Pausar e parar</h3><p>«Pausar» termina os movimentos já em fila e levanta a caneta. «Terminar» faz o mesmo e encerra o trabalho, sem avançar a cama. A paragem de emergência desliga a máquina através do firmware e exige um reinício. Os motores mantêm a posição até os soltares ou desligares a alimentação.</p>`);
 }
 function download(name,text,type='text/plain'){
   const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
-const baseName=()=>fileName.replace(/\.(svg|json)$/i,'').replace(/\.(drawingbot|pen-studio)$/i,'');
-async function loadSVG(file){
+async function loadSVG(file,at=null){
   if(!file||(S().running&&!server))return;
-  try{const imported=await importSVG(await file.text());source=imported.paths;importWarnings=imported.warnings;fileName=file.name;textSpec=null;zoom=1;prepare();toast(`${source.length} percursos importados.`);}catch(error){toast(error.message,true);}
+  try{
+    const imported=await importSVG(await file.text());
+    const shape=makeObject('svg',{paths:imported.paths,name:file.name.replace(/\.svg$/i,'').slice(0,80)});
+    const ratio=shape.paths.length?(()=>{let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const p of shape.paths)for(const v of p.points){minX=Math.min(minX,v.x);maxX=Math.max(maxX,v.x);minY=Math.min(minY,v.y);maxY=Math.max(maxY,v.y);}return (maxY-minY)/((maxX-minX)||1);})():1;
+    const w=Math.min(Number(settings.paperWidth)*.6,ratio>1?Number(settings.paperHeight)*.6/ratio:120),h=w*ratio,c=at||paperCenter();
+    editor.add({...shape,x:Math.round((c.x-w/2)*10)/10,y:Math.round((c.y-h/2)*10)/10,w:Math.round(w*10)/10,h:Math.round(h*10)/10});
+    if(editor.objects.length===1)setDocName(file.name);
+    toast(imported.warnings.length?imported.warnings.join(' '):`${imported.paths.length} percursos importados.`,false);
+  }catch(error){toast(error.message,true);}
 }
 function loadProject(saved){
-  const valid=validateProject(saved);
-  source=valid.paths;settings=valid.settings;fileName=valid.fileName;importWarnings=[];textSpec=valid.text;zoom=1;writeSettings();prepare();
+  const valid=validateDocument(saved);
+  settings=valid.settings;writeSettings();setDocName(valid.fileName);editor.setObjects(valid.objects);prepare();
 }
 function paperChanged(){
   const formats={bed:[settings.bedWidth,settings.bedHeight],a4:[210,297],a4landscape:[297,210],a5:[148,210]};
@@ -207,27 +291,32 @@ function syncThemeColor(){const meta=document.querySelector('meta[name="theme-co
 $('theme-toggle').onclick=toggleTheme;syncThemeColor();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',syncThemeColor);
 $('connect').onclick=connect;$('simulate').onclick=simulate;$('help').onclick=()=>showHelp();
 $('import').onclick=()=>$('svg-file').click();$('svg-file').onchange=e=>{loadSVG(e.target.files[0]);e.target.value='';};
-$('example').onclick=()=>{source=demoPaths();importWarnings=[];textSpec=null;fileName='Roseta de estudo.svg';prepare();};
+$('example').onclick=()=>{editor.add(exampleObject());};
+$('new-drawing').onclick=()=>{
+  const start=()=>{editor.setObjects([],{keepHistory:true});setDocName('Desenho');toast('Mesa limpa. Ctrl+Z recupera o desenho anterior.');};
+  if(editor.objects.length)modal('Começar um desenho novo?','<p>Os objetos da mesa são removidos. Podes recuperá-los com «Desfazer».</p>',start,'Limpar a mesa');else start();
+};
 $('drop-target').ondragover=e=>{e.preventDefault();$('drop-target').classList.add('drop-active');};
 $('drop-target').ondragleave=()=>$('drop-target').classList.remove('drop-active');
-$('drop-target').ondrop=e=>{e.preventDefault();$('drop-target').classList.remove('drop-active');loadSVG(e.dataTransfer.files[0]);};
+$('drop-target').ondrop=e=>{e.preventDefault();$('drop-target').classList.remove('drop-active');loadSVG(e.dataTransfer.files[0],editor.pointToBed(e));};
 for(const key of Object.keys(DEFAULTS))if($(key))$(key).addEventListener('input',()=>{
   if(key==='paper'){paperChanged();return;}
   if((key==='bedWidth'||key==='bedHeight')&&settings.paper==='bed'){settings.paperWidth=Number($('bedWidth').value);settings.paperHeight=Number($('bedHeight').value);}
   prepare();
 });
 all('[data-tip]').forEach(b=>b.onclick=()=>{$('tip').value=b.dataset.tip;prepare();});
-$('zoom-in').onclick=()=>{zoom=Math.min(4,zoom*1.4);renderPreview();};$('zoom-out').onclick=()=>{zoom=Math.max(1,zoom/1.4);renderPreview();};$('zoom-fit').onclick=()=>{zoom=1;renderPreview();};
-$('original-toggle').onclick=()=>{showOriginal=!showOriginal;$('original-toggle').classList.toggle('active',showOriginal);renderPreview();};
-$('export').onclick=()=>{try{download(baseName()+'-caneta.gcode',exportGcode(job));toast('G-code exportado. Define a origem e o zero Z antes de o executar.');}catch(error){toast(error.message,true);}};
-$('save-project').onclick=()=>download(baseName()+'.drawingbot.json',JSON.stringify(project(),null,2),'application/json');
+$('zoom-in').onclick=()=>{editor.setZoom(Math.min(6,editor.zoom*1.4));renderPreview();};$('zoom-out').onclick=()=>{editor.setZoom(Math.max(1,editor.zoom/1.4));renderPreview();};$('zoom-fit').onclick=()=>{editor.setZoom(1);renderPreview();};
+$('original-toggle').onclick=()=>{showOriginal=!showOriginal;$('original-toggle').classList.toggle('active',showOriginal);refresh('live');renderPreview();};
+const fileBase=()=>docName.replace(/[\\/:*?"<>|]+/g,'-');
+$('export').onclick=()=>{finalize();try{download(fileBase()+'-caneta.gcode',exportGcode(job));toast('G-code exportado. Define a origem e o zero Z antes de o executar.');}catch(error){toast(error.message,true);}};
+$('save-project').onclick=()=>download(fileBase()+'.drawingbot.json',JSON.stringify(project(),null,2),'application/json');
 $('load-project').onclick=()=>$('project-file').click();
 $('project-file').onchange=async e=>{
   try{const file=e.target.files[0];if(!file)return;if(file.size>8e6)throw Error('O projeto é demasiado grande.');
     loadProject(JSON.parse(await file.text()));toast('Projeto aberto. As referências da máquina não são alteradas.');
   }catch(error){toast(error.message,true);}finally{e.target.value='';}
 };
-$('upload-job').onclick=()=>perform(async()=>{const meta=await machine.upload(project());return `«${meta.name}» enviado para o DrawingBot.`;});
+$('upload-job').onclick=()=>perform(async()=>{finalize();const meta=await machine.upload(project());return `«${meta.name}» enviado para o DrawingBot.`;});
 $('home').onclick=()=>modal('Encontrar a origem X/Y',`<p>Levanta a caneta e deixa o caminho livre. X e Y vão procurar os fins de curso; <strong>o Z não se move</strong>.</p><p class="dialog-note">A origem é sempre da máquina. A posição do desenho é escolhida na mesa.</p>`,
   ()=>perform(()=>machine.home()),'A caneta está levantada · fazer origem');
 $('zero').onclick=()=>{readSettings();modal('A ponta toca no papel?',`<p>Aproxima primeiro a caneta com passos de 0,1 mm. A ponta deve tocar levemente no papel, com a caneta livre para subir no suporte.</p><p class="dialog-note">Vamos definir este contacto como Z = 0 e levantar ${format(settings.lift)} mm, sem acrescentar pressão.</p>`,
@@ -238,15 +327,16 @@ all('[data-jog]').forEach(button=>button.onclick=()=>{
 });
 $('pen-up').onclick=()=>perform(()=>machine.penUp({lift:settings.lift}),{quiet:true});
 $('pen-down').onclick=()=>perform(()=>machine.penDown({drawZ:settings.drawZ}),{quiet:true});
-$('use-position').onclick=()=>perform(async()=>{const p=await machine.position();$('originX').value=p.x;$('originY').value=p.y;prepare();},{quiet:true});
+$('use-position').onclick=()=>perform(async()=>{const p=await machine.position();const sel=editor.selected;if(sel)editor.update(sel.id,{x:p.x,y:p.y});},{quiet:true});
 $('endstops').onclick=()=>perform(()=>machine.endstops(),{quiet:true});
 $('release').onclick=()=>modal('Soltar os motores?',`<p>Os eixos ficam livres e a posição pode mudar. Será necessário repetir a origem X/Y e o contacto da caneta antes de desenhar.</p>`,()=>perform(()=>machine.release()),'Soltar e limpar referências');
 $('bed-off').onclick=()=>{$('bedTarget').value=0;prepare();perform(()=>machine.setBed({target:0}));};
 $('bed-apply').onclick=()=>{readSettings();perform(()=>machine.setBed({target:settings.bedTarget}));};
 $('start').onclick=()=>perform(async()=>{
+  finalize();
   if(!job||job.errors.length)throw Error('Revê o desenho antes de enviar.');
   if(server){const meta=await machine.upload(project());return (await machine.startJob(meta.id)).result;}
-  await machine.start(job,{name:fileName});
+  await machine.start(job,{name:docName});
 },{quiet:!server});
 $('pause').onclick=()=>perform(()=>machine.pause(),{quiet:true});
 $('stop').onclick=()=>perform(()=>machine.cancel(),{quiet:true});
@@ -256,24 +346,42 @@ let installPrompt;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;$('install').classList.remove('hidden');});
 $('install').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('install').classList.add('hidden');}};
 
+// ---------- Text ----------
 const textTool=createTextTool({toast});
-$('text-tool').onclick=()=>{
-  readSettings();
-  // If the drawing was resized since, reopen with the letter height that matches the current width.
-  const spec=textSpec&&textSpec.width?{...textSpec,capHeight:Math.round(textSpec.capHeight*settings.width/textSpec.width*10)/10}:textSpec;
+function openText(target=editor.selected?.kind==='text'?editor.selected:null){
+  // Reopen with the letter height that matches the current size of the text object.
+  const spec=target?.text?{...target.text,capHeight:target.text.width?Math.round(target.text.capHeight*target.w/target.text.width*10)/10:target.text.capHeight}:null;
   textTool.open({spec,onApply:(chosen,result)=>{
-    source=result.paths;importWarnings=[];
-    fileName=`Texto · ${chosen.content.trim().split(/\n/)[0].slice(0,32)}`;
-    const turned=Math.abs(Number(settings.rotation))%180===90;
-    settings.width=Math.round((turned?result.height:result.width)*10)/10;
-    textSpec={content:chosen.content,font:chosen.font,mode:chosen.mode,align:chosen.align,lineHeight:chosen.lineHeight,capHeight:chosen.capHeight,width:settings.width};
-    writeSettings();zoom=1;prepare();
+    const paths=result.paths.map(p=>({closed:p.closed,points:p.points}));
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const p of paths)for(const v of p.points){minX=Math.min(minX,v.x);maxX=Math.max(maxX,v.x);minY=Math.min(minY,v.y);maxY=Math.max(maxY,v.y);}
+    const w=Math.round((maxX-minX)*100)/100,h=Math.round((maxY-minY)*100)/100;
+    const text={content:chosen.content,font:chosen.font,mode:chosen.mode,align:chosen.align,lineHeight:chosen.lineHeight,capHeight:chosen.capHeight,width:w};
+    const name=`Texto · ${chosen.content.trim().split(/\n/)[0].slice(0,32)}`;
+    const fill=chosen.mode==='fill'?{...normalizeFill(target?.fill),pattern:target&&normalizeFill(target.fill).pattern!=='none'?normalizeFill(target.fill).pattern:'solid'}:{pattern:'none'};
+    if(target&&editor.objects.some(o=>o.id===target.id)){
+      const c={x:target.x+target.w/2,y:target.y+target.h/2};
+      editor.update(target.id,{paths,text,name,fill,w,h,x:Math.round((c.x-w/2)*100)/100,y:Math.round((c.y-h/2)*100)/100,keepRatio:true});
+    }else{
+      const c=paperCenter();editor.add(makeObject('text',{paths,text,name,fill,w,h,x:Math.round((c.x-w/2)*100)/100,y:Math.round((c.y-h/2)*100)/100}));
+    }
     toast(chosen.mode==='fill'?'Texto pronto: contorno e enchimento à medida da ponta.':'Texto pronto: um só traço por letra.');
   }});
-};
+}
+$('text-tool').onclick=()=>openText();
+$('obj-edit-text').onclick=()=>openText(editor.selected);
+$('preview').addEventListener('dblclick',()=>{if(editor.selected?.kind==='text')openText(editor.selected);});
+document.addEventListener('keydown',event=>{
+  const t=event.target;if(event.ctrlKey||event.metaKey||event.altKey||t?.closest?.('input,textarea,select,dialog')||document.querySelector('dialog[open]'))return;
+  if(event.key.toLowerCase()==='t'){event.preventDefault();openText(null);}
+  if(event.key.toLowerCase()==='i'){event.preventDefault();$('svg-file').click();}
+});
 
 async function init(){
-  writeSettings();prepare();
+  writeSettings();
+  let restored=false;
+  try{const saved=JSON.parse(localStorage.getItem(DOC_STORAGE)||'null');if(saved){const valid=validateDocument(saved);setDocName(valid.fileName);editor.setObjects(valid.objects);restored=true;}}catch{}
+  if(!restored){setDocName('Roseta de estudo');editor.setObjects([exampleObject()]);}
+  renderTools(editor.tool);prepare();
   server=await detectServer();
   if(server){
     machine=new RemoteMachine({...handlers,onJobs:()=>renderMachine(),onAuth:askPin});

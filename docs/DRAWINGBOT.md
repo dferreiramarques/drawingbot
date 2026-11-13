@@ -30,6 +30,24 @@ No fim de um desenho completo (USB ou G-code exportado), a caneta sobe para Z10 
 Após confirmar o levantamento, Y avança até ao máximo configurado (300 mm por defeito),
 sem alterar X. Pausar durante esta sequência mantém os 10 mm de folga.
 
+## Desenhar na mesa
+
+A barra por cima da mesa tem as ferramentas: Selecionar (V), Retângulo (R), Elipse (E), Polígono (P),
+Estrela (S), Coração (H), Linha (L), Mão livre (F), Texto (T) e Importar SVG (I). Arrasta na mesa para
+criar uma forma; um clique simples cria-a com 40 mm. Um desenho pode ter vários objetos.
+
+- **Selecionar:** arrastar move; os cantos redimensionam; a pega redonda roda. Shift mantém a
+  proporção (ou liberta-a, se «Manter proporção» estiver ativo) e roda de 15 em 15°.
+- **Teclado:** Delete apaga, Ctrl+Z desfaz, Ctrl+Shift+Z ou Ctrl+Y refaz, Ctrl+D duplica,
+  setas movem 1 mm (Shift: 10 mm), Esc volta a Selecionar.
+- **Propriedades:** posição, tamanho e rotação exatos, lados do polígono, pontas da estrela e o
+  preenchimento do objeto selecionado.
+- **Preenchimentos:** cheio, linhas, quadriculado, ondas, ziguezague, concêntrico, espiral e pontos,
+  com espaçamento e ângulo. O contorno fica meia ponta para dentro e o padrão roda com o objeto.
+  As linhas vizinhas do padrão são ligadas sem levantar a caneta sempre que possível.
+- O desenho fica guardado no browser e volta ao reabrir a app. «Guardar projeto» exporta-o em
+  `.drawingbot.json`; projetos antigos continuam a abrir, com o desenho no mesmo sítio.
+
 ## Texto
 
 «Escrever texto» abre a ferramenta de texto. Há dois modos, cada um com 8 tipos de letra

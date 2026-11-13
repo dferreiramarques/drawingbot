@@ -95,6 +95,6 @@ test('the Pi serves the text tool files and accepts filled-text projects',async 
     const upload=await call('jobs',{method:'POST',body:{format:'drawingbot',version:1,fileName:'Texto',settings:{width:10},paths:[square],text:{content:'A',font:'roboto',mode:'fill'}}});
     assert.equal(upload.status,201);assert.ok(upload.data.strokes>=2,'outline plus hatch');
     const saved=await call(`jobs/${upload.data.id}`);
-    assert.equal(saved.data.project.paths[0].fill,true);assert.equal(saved.data.project.text.font,'roboto');
+    assert.equal(saved.data.project.version,2);assert.equal(saved.data.project.objects[0].fill.pattern,'solid');assert.equal(saved.data.project.objects[0].text.font,'roboto');
   }finally{await stop();}
 });

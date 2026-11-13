@@ -6,7 +6,7 @@ import {readFile,writeFile,readdir,unlink,mkdir,stat} from 'node:fs/promises';
 import {resolve,join,extname,dirname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomBytes,timingSafeEqual,createHash} from 'node:crypto';
-import {createJob,validateProject,PROJECT_FORMAT} from '../src/geometry.mjs';
+import {composeJob,validateDocument,documentProject} from '../src/document.mjs';
 import {Machine} from '../src/machine.mjs';
 import {MarlinLink,SimulatedLink} from '../src/serial.mjs';
 import {findSerialPort,NodeSerialTransport} from './node-serial.mjs';
@@ -90,19 +90,19 @@ async function loadJobs(){
   jobs=list.filter(j=>j&&validId(j.id)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
 }
 function summary(project){
-  const job=createJob(project.paths,project.settings);
+  const job=composeJob(project.objects,project.settings);
   if(job.errors.length)throw Error(job.errors.join(' '));
   return job;
 }
 async function addJob(body){
   if(jobs.length>=MAX_JOBS)throw httpError(409,'O DrawingBot já tem demasiados projetos. Apaga alguns antes de enviar mais.');
   let project;
-  try{project=validateProject(body);}catch(error){throw httpError(400,error.message);}
+  try{project=validateDocument(body);}catch(error){throw httpError(400,error.message);}
   let job;try{job=summary(project);}catch(error){throw httpError(400,error.message);}
   const id=Date.now().toString(36)+randomBytes(4).toString('hex');
   const meta={id,name:project.fileName,createdAt:new Date().toISOString(),strokes:job.metrics.strokes,seconds:Math.round(job.metrics.seconds),
     width:Math.round(job.bounds.width*10)/10,height:Math.round(job.bounds.height*10)/10,tip:job.settings.tip};
-  await writeFile(join(JOBS,id+'.json'),JSON.stringify({meta,project:{format:PROJECT_FORMAT,version:1,...project}}));
+  await writeFile(join(JOBS,id+'.json'),JSON.stringify({meta,project:documentProject(project)}));
   jobs.unshift(meta);broadcast('jobs',jobs);return meta;
 }
 async function readJob(id){
@@ -111,7 +111,7 @@ async function readJob(id){
 }
 async function startJob(id){
   const {meta,project}=await readJob(id);
-  const valid=validateProject(project);
+  const valid=validateDocument(project);
   await machine.start(summary(valid),{name:meta.name});
   return `A desenhar «${meta.name}».`;
 }

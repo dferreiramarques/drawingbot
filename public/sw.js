@@ -1,4 +1,4 @@
-const CACHE='drawingbot-v1.3.0';
+const CACHE='drawingbot-v1.4.0';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>(key.startsWith('pen-studio-')||key.startsWith('drawingbot-'))&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
