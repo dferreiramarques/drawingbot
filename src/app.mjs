@@ -21,10 +21,10 @@ function toast(message,error=false){$('toast').textContent=message;$('toast').cl
 function log(line){logs.push(line);if(logs.length>180)logs.shift();$('console').textContent=logs.join('\n');$('console').scrollTop=$('console').scrollHeight;}
 function format(v,d=1){return Number(v).toLocaleString('pt-PT',{maximumFractionDigits:d,minimumFractionDigits:0});}
 function readSettings(){
-  for(const key of Object.keys(DEFAULTS)){const element=$(key);if(element)settings[key]=element.tagName==='SELECT'?element.value:Number(element.value);}
+  for(const key of Object.keys(DEFAULTS)){const element=$(key);if(element)settings[key]=element.type==='checkbox'?element.checked:element.tagName==='SELECT'?element.value:Number(element.value);}
   try{localStorage.setItem(STORAGE,JSON.stringify(settings));}catch{}
 }
-function writeSettings(){for(const key of Object.keys(DEFAULTS))if($(key))$(key).value=settings[key];}
+function writeSettings(){for(const key of Object.keys(DEFAULTS)){const element=$(key);if(!element)continue;if(element.type==='checkbox')element.checked=settings[key]===true||settings[key]==='true';else element.value=settings[key];}}
 function project(){return documentProject({fileName:docName,settings,objects:editor.objects});}
 
 // ---------- Board ----------
@@ -63,6 +63,7 @@ function prepare(){
   $('tip-line').style.height=Math.max(1,Math.min(12,settings.tip*5))+'px';
   all('[data-tip]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.tip)===settings.tip));
   $('bed-size').textContent=`${format(settings.bedWidth)} × ${format(settings.bedHeight)} mm`;
+  $('mirror-badge').classList.toggle('hidden',settings.mirror!==true);
   renderFillTiles();refresh();
 }
 function duration(seconds){return seconds<60?`~ ${Math.ceil(seconds)} s`:`~ ${Math.ceil(seconds/60)} min`;}

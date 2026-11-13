@@ -81,8 +81,13 @@ export function composeInk(objects,settings){
 export function composeJob(objects,options={}){
   const settings=checkSettings(options,{placement:false});
   if(!objects.length)throw Error('Ainda não há nada para desenhar.');
-  const {ink,original,warnings}=composeInk(objects,settings);
-  return finishJob(ink,original,settings,warnings,settings.compensation==='center'?0:(settings.compensation==='inside'?-1:1)*settings.tip/2);
+  let {ink,original,warnings}=composeInk(objects,settings);
+  // Mirror print: flipped left to right around the centre of the paper, for drawing on the back of a
+  // transparent film. The board keeps showing the drawing as it will be read.
+  const mirrored=settings.mirror===true||settings.mirror==='true';
+  if(mirrored){const axis=2*Number(settings.paperX)+Number(settings.paperWidth),flip=paths=>paths.map(p=>({...p,points:p.points.map(v=>({x:axis-v.x,y:v.y}))}));ink=flip(ink);original=flip(original);}
+  const job=finishJob(ink,original,settings,warnings,settings.compensation==='center'?0:(settings.compensation==='inside'?-1:1)*settings.tip/2);
+  job.mirrored=mirrored;return job;
 }
 
 // ---------- Projects ----------

@@ -2,7 +2,7 @@ import Clipper from 'clipper-lib';
 
 export const DEFAULTS = Object.freeze({tip:0.5, compensation:'center', width:140, originX:30, originY:30, rotation:0,
   drawSpeed:15, travelSpeed:40, lift:3, drawZ:0, paper:'bed', paperX:0, paperY:0,
-  bedWidth:300,bedHeight:300,paperWidth:300,paperHeight:300,bedTarget:0});
+  bedWidth:300,bedHeight:300,paperWidth:300,paperHeight:300,bedTarget:0,mirror:false});
 export const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function bounds(paths){
   const all=paths.flatMap(p=>p.points);
@@ -248,6 +248,7 @@ export function jobCommands(job,{origin={x:0,y:0}}={}){
 }
 export function exportGcode(job){
   return ['; DRAWINGBOT - Marlin',`; Ponta ${job.settings.tip} mm | compensacao ${job.settings.compensation} | deslocamento ${job.offset.toFixed(3)} mm`,
+    ...(job.mirrored?['; Espelhado na horizontal (para ler pelo outro lado de uma pelicula transparente).']:[]),
     '; Antes de executar: origem X/Y e zero Z manual no papel.',
     '; Este ficheiro nao faz homing nem define o zero automaticamente.',
     ...jobCommands(job).map(c=>c.code),`; Terminado: Z10 mm, Y${number(job.settings.bedHeight)} mm. Motores mantidos ativos.`].join('\n')+'\n';

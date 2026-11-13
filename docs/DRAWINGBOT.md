@@ -63,6 +63,14 @@ A altura indicada é a das maiúsculas. Depois de aplicado, o texto comporta-se 
 a largura, a rotação e a posição ajustam-se no painel. A ferramenta de texto cria sempre um texto novo;
 para alterar um texto, faz duplo clique nele na mesa (ou usa «Editar texto»). O texto também fica guardado nos projetos.
 
+## Imprimir em espelho
+
+«Imprimir em espelho» (no painel da caneta) troca esquerda e direita à volta do centro do papel.
+Serve para desenhar no verso de uma película transparente: a tinta fica do lado protegido e o
+desenho lê-se bem pela frente. A mesa continua a mostrar o desenho como será lido; o aviso
+«Impressão em espelho» lembra que está ativo. Vale para o desenho direto, para o G-code exportado
+(que o indica no cabeçalho) e para os projetos enviados ao Raspberry Pi.
+
 ## Cama aquecida: quando usar
 
 A cama serve sobretudo para **secar a tinta mais depressa**. Só estabiliza o papel quando ele está

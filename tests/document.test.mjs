@@ -61,3 +61,12 @@ test('projects: version 2 round-trips; version 1 drawings keep their place',()=>
   assert.ok(near(old.bounds.minX,now.bounds.minX,.05)&&near(old.bounds.maxY,now.bounds.maxY,.05),`${JSON.stringify(old.bounds)} vs ${JSON.stringify(now.bounds)}`);
   assert.ok(Object.keys(OBJECT_KINDS).length>=9);
 });
+
+test('mirror print flips the drawing left to right around the paper centre',()=>{
+  const objects=[makeObject('line',{paths:[{closed:false,points:[{x:0,y:0},{x:1,y:0}]}],x:20,y:50,w:30,h:0})];
+  const paper={tip:.5,paper:'a4',paperX:45,paperY:1.5,paperWidth:210,paperHeight:297};
+  const plain=composeJob(objects,paper),mirrored=composeJob(objects,{...paper,mirror:true});
+  assert.ok(near(plain.bounds.minX,20)&&near(plain.bounds.maxX,50));
+  assert.ok(near(mirrored.bounds.minX,300-50)&&near(mirrored.bounds.maxX,300-20),JSON.stringify(mirrored.bounds));
+  assert.equal(mirrored.mirrored,true);assert.equal(plain.mirrored,false);
+});

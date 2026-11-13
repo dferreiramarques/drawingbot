@@ -50,6 +50,7 @@ depois de `npm run build`.
 - Editor na própria mesa: retângulo, elipse, polígono, estrela, coração, linha e mão livre; mover, redimensionar e rodar; desfazer/refazer; vários objetos por desenho.
 - Preenchimentos para qualquer forma fechada: cheio, linhas, quadriculado, ondas, ziguezague, concêntrico, espiral e pontos.
 - Importação SVG (vários por desenho, também por arrastar para a mesa).
+- Impressão em espelho, para desenhar no verso de película transparente.
 - Ferramenta de texto com 16 tipos de letra: **letra preenchida** (contorno e enchimento em ziguezague à medida da ponta) ou **linha única** (um só traço por letra, tipo escantilhão), com acentos portugueses.
 - Espessura real da ponta; compensação de contornos por meia espessura, por dentro ou fora.
 - Linhas abertas mantêm o eixo; texto e símbolos devem ser convertidos em caminhos.
