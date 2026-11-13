@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -81,10 +82,12 @@ test('drawingbot.txt tolerates Windows line endings, quotes and comments',{skip:
   }finally{await rm(dir,{recursive:true,force:true});}
 });
 
-test('the Pi serves the text tool files and accepts filled-text projects',async()=>{
+const built=existsSync(new URL('../dist/text.js',import.meta.url));
+test('the Pi serves the text tool files and accepts filled-text projects',async t=>{
   const {call,stop,base}=await startServer();
   try{
-    for(const [file,type] of [['text.js',/javascript/],['fonts/roboto.woff',/font\/woff/],['fonts/ems-tech.json',/json/]]){
+    if(!built)t.diagnostic('dist/ not built: static file checks skipped (run npm run build).');
+    if(built)for(const [file,type] of [['text.js',/javascript/],['fonts/roboto.woff',/font\/woff/],['fonts/ems-tech.json',/json/]]){
       const res=await fetch(base.replace(/api\/$/,'')+file);
       assert.equal(res.status,200,file);assert.match(res.headers.get('content-type'),type,file);
     }
