@@ -28,3 +28,38 @@ if(process.argv.includes('--pi')){
   execFileSync('tar',['-czf','dist-pi/drawingbot-pi.tar.gz','-C','dist-pi','drawingbot'],{stdio:'inherit'});
   console.log('Raspberry Pi package ready: dist-pi/drawingbot-pi.tar.gz');
 }
+
+// GitHub Pages site: product page at the root, guide from docs/GUIA.md, app in app/, Pi files in pi/.
+if(process.argv.includes('--site')){
+  const {marked}=await import('marked');
+  const {posix}=await import('node:path');
+  const {existsSync}=await import('node:fs');
+  const REPO='https://github.com/dferreiramarques/drawingbot';
+  await rm('dist-site',{recursive:true,force:true});
+  await cp('site','dist-site',{recursive:true});
+  await rm('dist-site/guia.template.html');
+  await cp('dist','dist-site/app',{recursive:true});
+  if(existsSync('dist-pi/drawingbot-pi.tar.gz')){
+    await mkdir('dist-site/pi',{recursive:true});
+    await cp('dist-pi/drawingbot-pi.tar.gz','dist-site/pi/drawingbot-pi.tar.gz');
+    await cp('dist-pi/drawingbot/install.sh','dist-site/pi/install.sh');
+  }
+  const slug=text=>text.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/<[^>]+>/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const repoLink=href=>{
+    if(/^([a-z]+:|#|\/)/i.test(href))return href;
+    const [path,hash='']=href.split('#');
+    const target=posix.normalize(posix.join('docs',path));
+    return `${REPO}/${target.endsWith('/')?'tree':'blob'}/main/${target.replace(/\/$/,'')}${hash?'#'+hash:''}`;
+  };
+  marked.use({walkTokens(token){if(token.type==='link')token.href=repoLink(token.href);}});
+  const toc=[];
+  let html=marked.parse(await readFile('docs/GUIA.md','utf8'));
+  html=html.replace(/<h([23])>(.*?)<\/h\1>/g,(_,level,inner)=>{
+    const id=slug(inner);if(level==='2')toc.push(`<li><a href="#${id}">${inner.replace(/<[^>]+>/g,'')}</a></li>`);
+    return `<h${level} id="${id}">${inner}</h${level}>`;
+  });
+  const template=await readFile('site/guia.template.html','utf8');
+  await mkdir('dist-site/guia',{recursive:true});
+  await writeFile('dist-site/guia/index.html',template.replace('{{toc}}',toc.join('')).replace('{{content}}',html));
+  console.log('Site ready in dist-site/');
+}

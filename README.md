@@ -1,13 +1,18 @@
 # DrawingBot
 
-Conversão de uma CR-10 numa máquina de desenho com canetas flutuantes.
+Conversão de uma CR-10 numa máquina de desenho com caneta flutuante.
 Inclui a app DrawingBot, o servidor para Raspberry Pi e o firmware Marlin configurado para a máquina.
+
+- **Página do projeto:** https://dferreiramarques.github.io/drawingbot/
+- **Guia de montagem** (para replicar a máquina): [docs/GUIA.md](docs/GUIA.md), também em
+  https://dferreiramarques.github.io/drawingbot/guia/
+- **App:** https://dferreiramarques.github.io/drawingbot/app/
 
 ## Três formas de usar
 
 | Modo | Onde corre | Ligação à CR-10 |
 |---|---|---|
-| **Online** | https://dferreiramarques.github.io/drawingbot/ (Chrome ou Edge) | USB ao computador (Web Serial) |
+| **Online** | https://dferreiramarques.github.io/drawingbot/app/ (Chrome ou Edge) | USB ao computador (Web Serial) |
 | **Raspberry Pi** | `http://drawingbot.local` em qualquer browser da rede | USB ao Pi Zero 2 W, que corre os desenhos sozinho |
 | **Local** | `npm run build` e servir `dist/` em localhost | USB ao computador |
 
@@ -34,9 +39,10 @@ npm test           # geometria, protocolo, máquina, servidor do Pi e drawingbot
 npm run build      # app em dist/
 npm run pi:dev     # servidor do Pi em simulação: http://localhost:8790
 npm run build:pi   # pacote do Pi em dist-pi/drawingbot-pi.tar.gz
+npm run build:site # site do GitHub Pages em dist-site/ (produto, guia, app e pacote do Pi)
 ```
 
-Cada push para `main` corre os testes e publica a app e o pacote do Pi no GitHub Pages
+Cada push para `main` corre os testes e publica no GitHub Pages a página do projeto, o guia, a app e o pacote do Pi
 (`.github/workflows/pages.yml`). No Windows também é possível abrir `local/Abrir DrawingBot.cmd`
 depois de `npm run build`.
 
@@ -64,15 +70,17 @@ para não obrigar a regravar a placa.
 ## Estrutura
 
 - `src/`: app (geometria, SVG, protocolo Marlin, regras da máquina, cliente do Pi).
-- `public/`: HTML, CSS, ícones e service worker.
+- `public/`: HTML, CSS, ícones e service worker da app.
+- `site/`: página do projeto e modelo do guia (o conteúdo do guia vem de `docs/GUIA.md`).
 - `pi/`: servidor do Raspberry Pi, instalador, `drawingbot.txt` e serviços systemd.
 - `tests/`: testes automáticos.
 - `local/`: lançador Windows e servidor local, sem dependências Python externas.
 - `firmware/`: Marlin, configuração e patch face à versão oficial.
-- `docs/`: utilização, Raspberry Pi e registo de validação.
+- `docs/`: guia de montagem, utilização, Raspberry Pi e registo de validação.
 
 ## Licenças
 
 O Marlin conserva a licença GPL e os avisos originais dentro da pasta do firmware.
 Os avisos das bibliotecas de geometria estão em `public/THIRD-PARTY.txt` e `public/vendor/`.
+O suporte da caneta é o [Pen Holder for Ender 3 / CR 10](https://www.thingiverse.com/thing:4721453) de umer3d (CC BY 4.0).
 O pacote do Pi inclui `serialport` (MIT). Não é atribuída uma licença adicional ao código próprio.

@@ -51,25 +51,25 @@ function renderPreview(){
   const center=zoom>1&&job?{x:(job.bounds.minX+job.bounds.maxX)/2,y:h-(job.bounds.minY+job.bounds.maxY)/2}:{x:w/2,y:h/2};
   svg.setAttribute('viewBox',`${center.x-span/2} ${center.y-span/2} ${span} ${span}`);
   const defs=svgElement('defs'),grid=svgElement('pattern',{id:'grid',width:10,height:10,patternUnits:'userSpaceOnUse'});
-  grid.append(svgElement('path',{d:'M10 0H0V10',fill:'none',stroke:'#c7cfbb','stroke-width':.25}));defs.append(grid);svg.append(defs);
-  svg.append(svgElement('rect',{x:0,y:0,width:w,height:h,fill:'#e7eadf',rx:1,stroke:'#c8d0bc','stroke-width':.5}));
+  grid.append(svgElement('path',{d:'M10 0H0V10',class:'pv-grid','stroke-width':.25}));defs.append(grid);svg.append(defs);
+  svg.append(svgElement('rect',{x:0,y:0,width:w,height:h,class:'pv-bed',rx:1,'stroke-width':.5}));
   const paper=svgElement('g',{transform:`translate(0 ${h}) scale(1 -1)`});
-  paper.append(svgElement('rect',{x:settings.paperX,y:settings.paperY,width:settings.paperWidth,height:settings.paperHeight,fill:'#fffef9',stroke:'#d7ddcb','stroke-width':.5}));
+  paper.append(svgElement('rect',{x:settings.paperX,y:settings.paperY,width:settings.paperWidth,height:settings.paperHeight,class:'pv-paper','stroke-width':.5}));
   paper.append(svgElement('rect',{x:0,y:0,width:w,height:h,fill:'url(#grid)'}));
   if(job){
-    if(showOriginal)for(const p of job.original)paper.append(svgElement('path',{d:pathD(p),fill:'none',stroke:'#a5ad96','stroke-width':.3,'stroke-dasharray':'1.5 1.5'}));
-    for(const p of job.paths)paper.append(svgElement('path',{d:pathD(p),fill:'none',stroke:job.errors.length?'#b66e50':'#367c71','stroke-width':settings.tip,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.88}));
+    if(showOriginal)for(const p of job.original)paper.append(svgElement('path',{d:pathD(p),class:'pv-original','stroke-width':.3,'stroke-dasharray':'1.5 1.5'}));
+    for(const p of job.paths)paper.append(svgElement('path',{d:pathD(p),class:job.errors.length?'pv-ink error':'pv-ink','stroke-width':settings.tip,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.88}));
   }
   const position=S().position;
   if(position.x!==null&&position.y!==null){
-    const marker=svgElement('g',{transform:`translate(${position.x} ${position.y})`,stroke:'#cf764e','stroke-width':.65});
-    marker.append(svgElement('circle',{r:2,fill:'#fdfaf3'}),svgElement('path',{d:'M-4 0H4M0-4V4'}));paper.append(marker);
+    const marker=svgElement('g',{transform:`translate(${position.x} ${position.y})`,class:'pv-pen','stroke-width':.65});
+    marker.append(svgElement('circle',{r:2}),svgElement('path',{d:'M-4 0H4M0-4V4'}));paper.append(marker);
   }
   svg.append(paper);
-  for(let i=0;i<=w;i+=50){const label=svgElement('text',{x:i,y:h+8,'font-size':3.5,fill:'#9ba58d','text-anchor':'middle'});label.textContent=i;svg.append(label);}
-  for(let i=0;i<=h;i+=50){const label=svgElement('text',{x:-5,y:h-i+1,'font-size':3.5,fill:'#9ba58d','text-anchor':'end'});label.textContent=i;svg.append(label);}
-  const xLabel=svgElement('text',{x:w+8,y:h+1,'font-size':4,fill:'#8d9b7c'});xLabel.textContent='X';svg.append(xLabel);
-  const yLabel=svgElement('text',{x:-1,y:-7,'font-size':4,fill:'#8d9b7c'});yLabel.textContent='Y';svg.append(yLabel);
+  for(let i=0;i<=w;i+=50){const label=svgElement('text',{x:i,y:h+11,'font-size':3.5,class:'pv-label','text-anchor':'middle'});label.textContent=i;svg.append(label);}
+  for(let i=0;i<=h;i+=50){const label=svgElement('text',{x:-4,y:h-i+2.5,'font-size':3.5,class:'pv-label','text-anchor':'end'});label.textContent=i;svg.append(label);}
+  const xLabel=svgElement('text',{x:w+6,y:h+2.5,'font-size':4,class:'pv-axis'});xLabel.textContent='X';svg.append(xLabel);
+  const yLabel=svgElement('text',{x:-2,y:-6,'font-size':4,class:'pv-axis'});yLabel.textContent='Y';svg.append(yLabel);
   $('zoom-fit').textContent=Math.round(zoom*100)+'%';$('original-legend').classList.toggle('hidden',!showOriginal);
 }
 let lastPosition='';
@@ -197,6 +197,13 @@ function askPin(){
   setTimeout(()=>$('pin-input')?.focus(),50);
 }
 
+function toggleTheme(){
+  const root=document.documentElement,current=root.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  const next=current==='dark'?'light':'dark';root.dataset.theme=next;try{localStorage.setItem('drawingbot-theme',next);}catch{}
+  syncThemeColor();
+}
+function syncThemeColor(){const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();}
+$('theme-toggle').onclick=toggleTheme;syncThemeColor();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',syncThemeColor);
 $('connect').onclick=connect;$('simulate').onclick=simulate;$('help').onclick=()=>showHelp();
 $('import').onclick=()=>$('svg-file').click();$('svg-file').onchange=e=>{loadSVG(e.target.files[0]);e.target.value='';};
 $('example').onclick=()=>{source=demoPaths();importWarnings=[];fileName='Roseta de estudo.svg';prepare();};

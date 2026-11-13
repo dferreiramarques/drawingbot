@@ -18,3 +18,4 @@ __pycache__/
 Thumbs.db
 dist-pi/
 .drawingbot-data/
+dist-site/

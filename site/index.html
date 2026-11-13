@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrawingBot</title>
+<meta name="description" content="DrawingBot transforma uma impressora 3D CR-10 numa máquina de desenho com caneta flutuante. App no browser, Raspberry Pi opcional, firmware e guia de montagem abertos.">
+<meta property="og:title" content="DrawingBot: desenhar com canetas numa CR-10">
+<meta property="og:description" content="App, firmware e guia para transformar uma CR-10 numa máquina de desenho com caneta flutuante.">
+<link rel="icon" type="image/svg+xml" href="./app/icon.svg">
+<link rel="stylesheet" href="./site.css">
+<script>try{var t=localStorage.getItem('drawingbot-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="brand-mark">↗</span><span>DRAWING<span class="brand-light">BOT</span></span></a>
+    <nav class="site-nav" aria-label="Principal">
+      <a href="./guia/">Guia</a>
+      <a class="hide-sm" href="https://github.com/dferreiramarques/drawingbot">GitHub</a>
+      <a href="./app/">Abrir a app</a>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema claro ou escuro" title="Tema claro / escuro"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"/></svg></button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Projeto aberto · CR-10 · caneta flutuante</p>
+      <h1>A tua impressora 3D, agora a <span>desenhar</span>.</h1>
+      <p class="lede">O DrawingBot transforma uma Creality CR-10 numa máquina de desenho. Importas um SVG,
+        indicas a espessura da caneta e a máquina desenha-o no papel, com a caneta a assentar pelo próprio peso.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="./app/">Abrir a app <span aria-hidden="true">→</span></a>
+        <a class="btn btn-secondary" href="./guia/">Guia de montagem</a>
+      </div>
+      <p class="hero-note">A app corre no Chrome ou no Edge e tem um modo de simulação para experimentares sem máquina.</p>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 400 340">
+        <rect class="art-frame" x="16" y="14" width="368" height="312" rx="10"/>
+        <line class="art-rail" x1="40" y1="30" x2="40" y2="310"/>
+        <line class="art-rail" x1="360" y1="30" x2="360" y2="310"/>
+        <rect class="art-paper" x="88" y="66" width="224" height="210" rx="2"/>
+        <path class="art-ink draw-anim" pathLength="1" d="M280.6 171.0L280.0 174.6L278.2 178.0L275.4 181.2L272.0 184.1L268.3 186.6L264.8 188.9L261.8 191.1L259.6 193.4L258.3 195.9L257.9 198.9L258.1 202.3L258.9 206.2L259.8 210.5L260.4 214.9L260.5 219.2L259.8 223.3L258.2 226.6L255.6 229.2L252.3 230.8L248.2 231.5L243.9 231.4L239.5 230.8L235.2 229.9L231.3 229.1L227.9 228.9L224.9 229.3L222.4 230.6L220.1 232.8L217.9 235.8L215.6 239.3L213.1 243.0L210.2 246.4L207.0 249.2L203.6 251.0L200.0 251.6L196.4 251.0L193.0 249.2L189.8 246.4L186.9 243.0L184.4 239.3L182.1 235.8L179.9 232.8L177.6 230.6L175.1 229.3L172.1 228.9L168.7 229.1L164.8 229.9L160.5 230.8L156.1 231.4L151.8 231.5L147.7 230.8L144.4 229.2L141.8 226.6L140.2 223.3L139.5 219.2L139.6 214.9L140.2 210.5L141.1 206.2L141.9 202.3L142.1 198.9L141.7 195.9L140.4 193.4L138.2 191.1L135.2 188.9L131.7 186.6L128.0 184.1L124.6 181.2L121.8 178.0L120.0 174.6L119.4 171.0L120.0 167.4L121.8 164.0L124.6 160.8L128.0 157.9L131.7 155.4L135.2 153.1L138.2 150.9L140.4 148.6L141.7 146.1L142.1 143.1L141.9 139.7L141.1 135.8L140.2 131.5L139.6 127.1L139.5 122.8L140.2 118.7L141.8 115.4L144.4 112.8L147.7 111.2L151.8 110.5L156.1 110.6L160.5 111.2L164.8 112.1L168.7 112.9L172.1 113.1L175.1 112.7L177.6 111.4L179.9 109.2L182.1 106.2L184.4 102.7L186.9 99.0L189.8 95.6L193.0 92.8L196.4 91.0L200.0 90.4L203.6 91.0L207.0 92.8L210.2 95.6L213.1 99.0L215.6 102.7L217.9 106.2L220.1 109.2L222.4 111.4L224.9 112.7L227.9 113.1L231.3 112.9L235.2 112.1L239.5 111.2L243.9 110.6L248.2 110.5L252.3 111.2L255.6 112.8L258.2 115.4L259.8 118.7L260.5 122.8L260.4 127.1L259.8 131.5L258.9 135.8L258.1 139.7L257.9 143.1L258.3 146.1L259.6 148.6L261.8 150.9L264.8 153.1L268.3 155.4L272.0 157.9L275.4 160.8L278.2 164.0L280.0 167.4Z"/>
+        <path class="art-ink draw-anim d2" pathLength="1" d="M265.6 171.0L264.9 173.9L263.2 176.7L260.5 179.2L257.2 181.4L253.7 183.3L250.4 184.9L247.6 186.5L245.6 188.1L244.6 190.1L244.4 192.4L245.0 195.2L246.0 198.5L247.3 202.2L248.3 206.1L248.7 209.9L248.5 213.3L247.3 216.2L245.2 218.3L242.3 219.5L238.9 219.7L235.1 219.3L231.2 218.3L227.5 217.0L224.2 216.0L221.4 215.4L219.1 215.6L217.1 216.6L215.5 218.6L213.9 221.4L212.3 224.7L210.4 228.2L208.2 231.5L205.7 234.2L202.9 235.9L200.0 236.6L197.1 235.9L194.3 234.2L191.8 231.5L189.6 228.2L187.7 224.7L186.1 221.4L184.5 218.6L182.9 216.6L180.9 215.6L178.6 215.4L175.8 216.0L172.5 217.0L168.8 218.3L164.9 219.3L161.1 219.7L157.7 219.5L154.8 218.3L152.7 216.2L151.5 213.3L151.3 209.9L151.7 206.1L152.7 202.2L154.0 198.5L155.0 195.2L155.6 192.4L155.4 190.1L154.4 188.1L152.4 186.5L149.6 184.9L146.3 183.3L142.8 181.4L139.5 179.2L136.8 176.7L135.1 173.9L134.4 171.0L135.1 168.1L136.8 165.3L139.5 162.8L142.8 160.6L146.3 158.7L149.6 157.1L152.4 155.5L154.4 153.9L155.4 151.9L155.6 149.6L155.0 146.8L154.0 143.5L152.7 139.8L151.7 135.9L151.3 132.1L151.5 128.7L152.7 125.8L154.8 123.7L157.7 122.5L161.1 122.3L164.9 122.7L168.8 123.7L172.5 125.0L175.8 126.0L178.6 126.6L180.9 126.4L182.9 125.4L184.5 123.4L186.1 120.6L187.7 117.3L189.6 113.8L191.8 110.5L194.3 107.8L197.1 106.1L200.0 105.5L202.9 106.1L205.7 107.8L208.2 110.5L210.4 113.8L212.3 117.3L213.9 120.6L215.5 123.4L217.1 125.4L219.1 126.4L221.4 126.6L224.2 126.0L227.5 125.0L231.2 123.7L235.1 122.7L238.9 122.3L242.3 122.5L245.2 123.7L247.3 125.8L248.5 128.7L248.7 132.1L248.3 135.9L247.3 139.8L246.0 143.5L245.0 146.8L244.4 149.6L244.6 151.9L245.6 153.9L247.6 155.5L250.4 157.1L253.7 158.7L257.2 160.6L260.5 162.8L263.2 165.3L264.9 168.1Z"/>
+        <path class="art-ink alt draw-anim d3" pathLength="1" d="M250.4 171.0L249.8 173.2L248.1 175.3L245.6 177.2L242.4 178.7L239.1 179.9L236.0 180.9L233.5 181.9L231.7 182.9L230.9 184.2L231.0 185.9L231.9 188.2L233.2 190.8L234.7 193.9L236.1 197.2L236.9 200.5L237.1 203.4L236.3 205.7L234.7 207.3L232.4 208.1L229.5 207.9L226.2 207.1L222.9 205.7L219.8 204.2L217.2 202.9L214.9 202.0L213.2 201.9L211.9 202.7L210.9 204.5L209.9 207.0L208.9 210.1L207.7 213.4L206.2 216.6L204.3 219.1L202.2 220.8L200.0 221.4L197.8 220.8L195.7 219.1L193.8 216.6L192.3 213.4L191.1 210.1L190.1 207.0L189.1 204.5L188.1 202.7L186.8 201.9L185.1 202.0L182.8 202.9L180.2 204.2L177.1 205.7L173.8 207.1L170.5 207.9L167.6 208.1L165.3 207.3L163.7 205.7L162.9 203.4L163.1 200.5L163.9 197.2L165.3 193.9L166.8 190.8L168.1 188.2L169.0 185.9L169.1 184.2L168.3 182.9L166.5 181.9L164.0 180.9L160.9 179.9L157.6 178.7L154.4 177.2L151.9 175.3L150.2 173.2L149.6 171.0L150.2 168.8L151.9 166.7L154.4 164.8L157.6 163.3L160.9 162.1L164.0 161.1L166.5 160.1L168.3 159.1L169.1 157.8L169.0 156.1L168.1 153.8L166.8 151.2L165.3 148.1L163.9 144.8L163.1 141.5L162.9 138.6L163.7 136.3L165.3 134.7L167.6 133.9L170.5 134.1L173.8 134.9L177.1 136.3L180.2 137.8L182.8 139.1L185.1 140.0L186.8 140.1L188.1 139.3L189.1 137.5L190.1 135.0L191.1 131.9L192.3 128.6L193.8 125.4L195.7 122.9L197.8 121.2L200.0 120.6L202.2 121.2L204.3 122.9L206.2 125.4L207.7 128.6L208.9 131.9L209.9 135.0L210.9 137.5L211.9 139.3L213.2 140.1L214.9 140.0L217.2 139.1L219.8 137.8L222.9 136.3L226.2 134.9L229.5 134.1L232.4 133.9L234.7 134.7L236.3 136.3L237.1 138.6L236.9 141.5L236.1 144.8L234.7 148.1L233.2 151.2L231.9 153.8L231.0 156.1L230.9 157.8L231.7 159.1L233.5 160.1L236.0 161.1L239.1 162.1L242.4 163.3L245.6 164.8L248.1 166.7L249.8 168.8Z"/>
+        <path class="art-ink draw-anim d3" pathLength="1" d="M232.4 171.0L232.2 172.4L231.4 173.8L230.3 175.1L228.8 176.2L227.0 177.2L224.9 177.9L222.8 178.4L220.7 178.8L218.7 179.0L216.9 179.1L215.4 179.3L214.1 179.4L213.2 179.7L212.6 180.2L212.4 180.9L212.4 181.8L212.6 183.0L213.0 184.6L213.4 186.3L213.8 188.3L214.1 190.4L214.3 192.6L214.2 194.7L213.9 196.7L213.3 198.5L212.4 200.0L211.3 201.1L210.0 201.8L208.6 202.0L207.0 201.8L205.5 201.1L203.9 200.0L202.5 198.5L201.2 196.8L200.0 195.0L199.0 193.1L198.2 191.3L197.5 189.6L196.9 188.2L196.3 187.0L195.8 186.2L195.2 185.8L194.4 185.8L193.5 186.1L192.4 186.7L191.1 187.5L189.6 188.5L187.8 189.5L185.9 190.4L183.9 191.2L181.8 191.8L179.8 192.1L177.9 192.1L176.2 191.8L174.8 191.1L173.8 190.0L173.1 188.7L172.9 187.2L173.1 185.5L173.7 183.7L174.6 181.9L175.8 180.1L177.2 178.4L178.7 176.9L180.2 175.5L181.5 174.4L182.7 173.3L183.6 172.5L184.2 171.7L184.4 171.0L184.2 170.3L183.6 169.5L182.7 168.7L181.5 167.6L180.2 166.5L178.7 165.1L177.2 163.6L175.8 161.9L174.6 160.1L173.7 158.3L173.1 156.5L172.9 154.8L173.1 153.3L173.8 152.0L174.8 150.9L176.2 150.2L177.9 149.9L179.8 149.9L181.8 150.2L183.9 150.8L185.9 151.6L187.8 152.5L189.6 153.5L191.1 154.5L192.4 155.3L193.5 155.9L194.4 156.2L195.2 156.2L195.8 155.8L196.3 155.0L196.9 153.8L197.5 152.4L198.2 150.7L199.0 148.9L200.0 147.0L201.2 145.2L202.5 143.5L203.9 142.0L205.5 140.9L207.0 140.2L208.6 140.0L210.0 140.2L211.3 140.9L212.4 142.0L213.3 143.5L213.9 145.3L214.2 147.3L214.3 149.4L214.1 151.6L213.8 153.7L213.4 155.7L213.0 157.4L212.6 159.0L212.4 160.2L212.4 161.1L212.6 161.8L213.2 162.3L214.1 162.6L215.4 162.7L216.9 162.9L218.7 163.0L220.7 163.2L222.8 163.6L224.9 164.1L227.0 164.8L228.8 165.8L230.3 166.9L231.4 168.2L232.2 169.6Z"/>
+        <line class="art-rail" x1="40" y1="96" x2="360" y2="96"/>
+        <rect class="art-carriage" x="250" y="82" width="40" height="28" rx="5"/>
+        <circle class="art-pen" cx="270" cy="96" r="5"/>
+        <text class="art-label" x="52" y="314">300 × 300 mm</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="funcionalidades">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Do ecrã ao papel, sem G-code à mão</h2>
+      <p>Tudo o que é preciso para desenhar com precisão, numa só app.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 16l9-9 3 3-9 9H7z"/></svg></div><h3>Importa SVG</h3><p>Ajusta o tamanho, a rotação e a posição na mesa, com pré-visualização à escala real.</p></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg></div><h3>Compensa a ponta</h3><p>Usa a espessura real do traço para desenhar contornos por dentro, por fora ou ao centro da linha.</p></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg></div><h3>Caneta flutuante</h3><p>A caneta desliza e assenta pelo peso. Irregularidades do papel não deixam marcas nem partem a ponta.</p></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><h3>USB direto no browser</h3><p>Liga a máquina ao computador e controla os eixos, a origem e o zero Z a partir do Chrome ou do Edge.</p></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.5" r="1"/></svg></div><h3>Ou pela rede, com um Pi</h3><p>Com um Raspberry Pi Zero 2 W, os desenhos ficam guardados no Pi e continuam com o browser fechado.</p></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Seguro por defeito</h3><p>Não desenha sem origem e zero definidos. Tem pausa, terminação controlada e paragem de emergência.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="como-funciona">
+  <div class="wrap grid grid-2" style="gap:48px;align-items:start">
+    <div class="section-head">
+      <h2>Como funciona</h2>
+      <p>Depois de montada, cada desenho leva poucos minutos a preparar.</p>
+    </div>
+    <ol class="steps">
+      <li><h3>Prende o papel e liga a máquina</h3><p>Por USB no browser, ou abre <code>drawingbot.local</code> se tiveres o Pi.</p></li>
+      <li><h3>Faz a origem e toca no papel</h3><p>X e Y procuram os fins de curso. Desces a caneta até tocar e defines o zero Z.</p></li>
+      <li><h3>Importa o SVG e desenha</h3><p>Indicas a espessura e a posição, confirmas na pré-visualização e carregas em «Desenhar».</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="alt" id="modos">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Três formas de usar</h2>
+      <p>A mesma app, com a máquina ligada ao computador ou a um Raspberry Pi.</p>
+    </div>
+    <div class="table-scroll">
+      <table class="modes">
+        <thead><tr><th>Modo</th><th>Onde abres</th><th>Ligação à CR-10</th></tr></thead>
+        <tbody>
+          <tr><td>Online</td><td><a href="./app/">dferreiramarques.github.io/drawingbot/app</a> (Chrome ou Edge)</td><td>USB ao computador</td></tr>
+          <tr><td>Raspberry Pi</td><td><code>http://drawingbot.local</code> em qualquer browser da rede</td><td>USB ao Pi, que desenha sozinho</td></tr>
+          <tr><td>Local</td><td><code>npm run build</code> e servir <code>dist/</code></td><td>USB ao computador</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="material">
+  <div class="wrap grid grid-2" style="gap:48px;align-items:start">
+    <div>
+      <div class="section-head">
+        <h2>O que precisas</h2>
+        <p>A lista completa, com quantidades e notas, está no guia.</p>
+      </div>
+      <a class="btn btn-secondary" href="./guia/#2-material">Ver a lista no guia</a>
+    </div>
+    <ul class="bom">
+      <li><strong>1×</strong> Creality CR-10 (ou máquina cartesiana com Marlin)</li>
+      <li><strong>1×</strong> Placa MKS Gen V1.4 com 3 drivers TMC2208</li>
+      <li><strong>1×</strong> Suporte de caneta deslizante impresso (umer3d, CC BY)</li>
+      <li><strong>4×</strong> Rolamentos em V de 12 × 3 mm, mais parafusos e porcas M3</li>
+      <li><strong>1×</strong> Caneta ou marcador e papel</li>
+      <li><strong>opc.</strong> Raspberry Pi Zero 2 W com adaptador OTG</li>
+    </ul>
+  </div>
+</section>
+
+<section class="alt" id="raspberry-pi">
+  <div class="wrap grid grid-2" style="gap:48px;align-items:center">
+    <div class="section-head" style="margin:0">
+      <h2>Raspberry Pi: desenha sem o computador</h2>
+      <p>Grava o Raspberry Pi OS Lite, entra por SSH e corre o instalador. O Wi-Fi, o nome na rede e o PIN
+        ficam num ficheiro de texto, <code>drawingbot.txt</code>, que podes editar no cartão SD.</p>
+      <p style="margin-top:16px"><a href="https://github.com/dferreiramarques/drawingbot/blob/main/docs/RASPBERRY-PI.md">Guia do Raspberry Pi →</a></p>
+    </div>
+    <pre><code>curl -fsSL https://dferreiramarques.github.io/drawingbot/pi/install.sh | sudo bash</code></pre>
+  </div>
+</section>
+
+<section id="creditos">
+  <div class="wrap">
+    <div class="callout">
+      <p><strong>Créditos.</strong> O suporte da caneta é o
+        <a href="https://www.thingiverse.com/thing:4721453">Pen Holder for Ender 3 / CR 10</a> de umer3d (CC BY 4.0).
+        O firmware é baseado no <a href="https://marlinfw.org/">Marlin</a> (GPL).</p>
+      <p>O código, o firmware configurado e este guia estão no <a href="https://github.com/dferreiramarques/drawingbot">GitHub</a>.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DrawingBot · feito para o ritmo da tua caneta</span>
+    <span><a href="./guia/">Guia</a> · <a href="./app/">App</a> · <a href="https://github.com/dferreiramarques/drawingbot">GitHub</a></span>
+  </div>
+</footer>
+<script src="./site.js"></script>
+</body>
+</html>
