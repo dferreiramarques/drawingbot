@@ -63,6 +63,29 @@ A altura indicada é a das maiúsculas. Depois de aplicado, o texto comporta-se 
 a largura, a rotação e a posição ajustam-se no painel. A ferramenta de texto cria sempre um texto novo;
 para alterar um texto, faz duplo clique nele na mesa (ou usa «Editar texto»). O texto também fica guardado nos projetos.
 
+## Cama aquecida: quando usar
+
+A cama serve sobretudo para **secar a tinta mais depressa**. Só estabiliza o papel quando ele está
+húmido ou ondulado. Para o manter quieto, prende-o à mesa com molas, fita de papel ou spray de
+fixação reposicionável: o calor não substitui isso.
+
+- **Tintas à base de água em zonas densas** (gel, caneta de aparo, marcadores de aguarela, brush pens):
+  a 35–45 °C a tinta seca mais depressa e a caneta não arrasta tinta húmida nos preenchimentos
+  cheios, quadriculados ou concêntricos. O papel também ondula menos.
+- **Ceras e pastéis de óleo:** perto dos 60 °C (o máximo da app) muitas ceras amolecem e o traço fica
+  mais cheio. O efeito é ligeiro: a encáustica a sério usa placas a 80–100 °C.
+- **Papel húmido:** uns minutos a cerca de 40 °C antes de desenhar deixam-no mais plano.
+
+Quando deixar desligada:
+
+- **Fineliners e canetas finas:** a ponta fica perto de uma superfície quente, seca e começa a falhar.
+- **Papel térmico** (talões, algumas etiquetas): escurece a partir de cerca de 60 °C.
+- **Papel seco e comum:** o calor não ajuda e, em excesso, o papel arqueia ao secar.
+  O suporte da caneta em PLA também amolece perto dos 60 °C.
+
+O desenho nunca espera pelo aquecimento: define a temperatura em «Área útil e diagnóstico → Cama
+opcional», espera que estabilize e só depois escolhe «Desenhar».
+
 ## Instalação local
 
 ```

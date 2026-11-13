@@ -56,6 +56,8 @@ A peça `pen_part` tem de deslizar sem folga lateral nem prender.
 
 - Canetas ou marcadores de corpo cilíndrico que caibam no suporte.
 - Papel e molas ou fita de papel para o prender à mesa.
+- Opcional: a cama aquecida da CR-10 ajuda a secar tintas à base de água nos preenchimentos.
+  Vê [quando usar a cama](DRAWINGBOT.md#cama-aquecida-quando-usar).
 
 ### Opcional: controlo pela rede
 
