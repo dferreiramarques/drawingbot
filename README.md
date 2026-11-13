@@ -16,7 +16,6 @@ Inclui a app DrawingBot, o servidor para Raspberry Pi e o firmware Marlin config
 | **Raspberry Pi** | `http://drawingbot.local` em qualquer browser da rede | USB ao Pi Zero 2 W, que corre os desenhos sozinho |
 | **Local** | `npm run build` e servir `dist/` em localhost | USB ao computador |
 
-Sem máquina, «Experimentar sem ligar» simula o equipamento (modo online e local).
 
 ## Raspberry Pi (DrawingBot na rede)
 

@@ -77,7 +77,6 @@ HTTPS ou localhost são necessários para USB e service worker. A PWA também po
 a partir do Site publicado. As dependências estão incluídas no bundle; não são necessários CDNs
 em funcionamento. Projetos e preferências são locais, as referências da máquina não são persistidas.
 
-O modo «Experimentar sem ligar» simula o equipamento e nunca escreve numa porta USB.
 Não executar outra aplicação serial em simultâneo. Desligar a sessão de diagnóstico Python
 antes de selecionar a porta no navegador.
 

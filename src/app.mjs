@@ -1,7 +1,7 @@
 import {DEFAULTS,demoPaths,exportGcode,FILL_PATTERNS,fillRegion,normalizeFill} from './geometry.mjs';
 import {composeInk,composeJob,makeObject,shapePaths,validateDocument,documentProject,OBJECT_KINDS} from './document.mjs';
 import {importSVG} from './svg-import.mjs';
-import {MarlinLink,SimulatedLink,WebSerialTransport} from './serial.mjs';
+import {MarlinLink,WebSerialTransport} from './serial.mjs';
 import {Machine} from './machine.mjs';
 import {RemoteMachine,detectServer} from './remote.mjs';
 import {createTextTool} from './app-text.mjs';
@@ -158,7 +158,6 @@ function renderMachine(){
   $('connect').textContent=s.connecting?'A preparar…':s.connected?'Desligar USB':'Ligar máquina ↗';$('connect').disabled=s.connecting||s.running||s.busy||offline;
   $('machine-indicator').className='tiny-dot'+(s.connected?' teal':'');
   $('offline-note').classList.toggle('hidden',s.connected);
-  $('simulate').classList.toggle('hidden',remote);
   $('offline-copy').textContent=remote?'Liga a CR-10 por USB ao DrawingBot. A ligação é feita automaticamente.':'Liga a CR-10 por USB para controlar os eixos e enviar o desenho.';
   for(const id of ['home','zero','pen-up','bed-off','bed-apply','endstops','release'])$(id).disabled=!ready||locked;
   $('use-position').disabled=!ready||locked||!editor.selected;
@@ -225,14 +224,6 @@ async function connect(){
   let port;try{port=await navigator.serial.requestPort();}catch(error){if(error.name!=='NotFoundError')toast(error.message,true);return;}
   await perform(async()=>{await machine.connect(h=>new MarlinLink({transport:new WebSerialTransport(port),...h}));return 'Ligação pronta. Começa pela origem X/Y, com a caneta levantada.';});
 }
-async function simulate(){
-  if(server)return;
-  await perform(async()=>{
-    if(S().connected)await machine.disconnect();
-    await machine.connect(h=>new SimulatedLink({onLine:h.onLine}),{simulated:true});
-    return 'Simulação ligada. Os controlos não acionam a impressora.';
-  });
-}
 function modal(title,body,action,label='Continuar'){
   $('modal-content').replaceChildren();const h=document.createElement('h2');h.textContent=title;$('modal-content').append(h);
   const content=document.createElement('div');content.innerHTML=body;$('modal-content').append(content);
@@ -289,7 +280,7 @@ function toggleTheme(){
 }
 function syncThemeColor(){const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();}
 $('theme-toggle').onclick=toggleTheme;syncThemeColor();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',syncThemeColor);
-$('connect').onclick=connect;$('simulate').onclick=simulate;$('help').onclick=()=>showHelp();
+$('connect').onclick=connect;$('help').onclick=()=>showHelp();
 $('import').onclick=()=>$('svg-file').click();$('svg-file').onchange=e=>{loadSVG(e.target.files[0]);e.target.value='';};
 $('example').onclick=()=>{editor.add(exampleObject());};
 $('new-drawing').onclick=()=>{

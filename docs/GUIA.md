@@ -121,13 +121,12 @@ Se a tua máquina não for igual, ajusta em `Configuration.h` e `Configuration_a
 
 1. Abre a app em <https://dferreiramarques.github.io/drawingbot/app/> no **Chrome ou Edge**,
    num computador ligado à placa por USB.
-2. Experimenta antes com «Experimentar sem ligar», que simula a máquina.
-3. Prende uma folha à mesa e escolhe «Ligar máquina». A app espera pelo arranque da placa.
-4. **Origem X/Y:** com a caneta levantada, X e Y procuram os fins de curso.
-5. **Contacto da caneta:** desce o Z em passos de 0,1 mm até a ponta tocar levemente no papel
+2. Prende uma folha à mesa e escolhe «Ligar máquina». A app espera pelo arranque da placa.
+3. **Origem X/Y:** com a caneta levantada, X e Y procuram os fins de curso.
+4. **Contacto da caneta:** desce o Z em passos de 0,1 mm até a ponta tocar levemente no papel
    e escolhe «Definir zero Z». A caneta levanta sozinha.
-6. Importa um SVG (ou usa o exemplo), indica a espessura real do traço e a posição, e escolhe «Desenhar».
-7. No fim a caneta sobe 10 mm e a mesa vem para a frente, para tirares o papel.
+5. Desenha na mesa ou importa um SVG (ou usa o exemplo), indica a espessura real do traço e a posição, e escolhe «Desenhar».
+6. No fim a caneta sobe 10 mm e a mesa vem para a frente, para tirares o papel.
 
 Para não depender do computador, monta o Raspberry Pi: os desenhos ficam guardados no Pi e
 correm mesmo com o browser fechado. Vê [RASPBERRY-PI.md](RASPBERRY-PI.md).
