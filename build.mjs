@@ -6,6 +6,7 @@ const pkg=JSON.parse(await readFile('package.json','utf8'));
 await mkdir('dist',{recursive:true});
 await cp('public','dist',{recursive:true});
 await build({entryPoints:['src/app.mjs'],bundle:true,outfile:'dist/app.js',format:'iife',target:['chrome100','edge100','safari15','firefox100'],minify:true,legalComments:'eof'});
+await build({entryPoints:['src/text.mjs'],bundle:true,outfile:'dist/text.js',format:'iife',globalName:'DrawingBotText',target:['chrome100','edge100','safari15','firefox100'],minify:true,legalComments:'eof'});
 console.log('DrawingBot app ready in dist/');
 
 // Raspberry Pi package: server + app + installer → dist-pi/drawingbot-pi.tar.gz

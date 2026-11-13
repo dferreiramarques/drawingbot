@@ -23,7 +23,7 @@ async function startServer(env={}){
     return {status:res.status,data:await res.json().catch(()=>null)};
   };
   const stop=async()=>{child.kill();await rm(data,{recursive:true,force:true});};
-  return {call,stop};
+  return {call,stop,base};
 }
 const until=async(check,ms=10000)=>{const end=Date.now()+ms;while(Date.now()<end){if(await check())return;await new Promise(r=>setTimeout(r,100));}throw Error('condition not met');};
 
@@ -79,4 +79,19 @@ test('drawingbot.txt tolerates Windows line endings, quotes and comments',{skip:
     assert.match(result.stdout,/set-hostname drawingbot/);
     assert.match(result.stdout,/DRAWINGBOT_SERIAL=auto, PIN definido/);
   }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('the Pi serves the text tool files and accepts filled-text projects',async()=>{
+  const {call,stop,base}=await startServer();
+  try{
+    for(const [file,type] of [['text.js',/javascript/],['fonts/roboto.woff',/font\/woff/],['fonts/ems-tech.json',/json/]]){
+      const res=await fetch(base.replace(/api\/$/,'')+file);
+      assert.equal(res.status,200,file);assert.match(res.headers.get('content-type'),type,file);
+    }
+    const square={closed:true,fill:true,points:[{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}]};
+    const upload=await call('jobs',{method:'POST',body:{format:'drawingbot',version:1,fileName:'Texto',settings:{width:10},paths:[square],text:{content:'A',font:'roboto',mode:'fill'}}});
+    assert.equal(upload.status,201);assert.ok(upload.data.strokes>=2,'outline plus hatch');
+    const saved=await call(`jobs/${upload.data.id}`);
+    assert.equal(saved.data.project.paths[0].fill,true);assert.equal(saved.data.project.text.font,'roboto');
+  }finally{await stop();}
 });

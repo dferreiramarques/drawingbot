@@ -3,11 +3,12 @@ import {importSVG} from './svg-import.mjs';
 import {MarlinLink,SimulatedLink,WebSerialTransport} from './serial.mjs';
 import {Machine} from './machine.mjs';
 import {RemoteMachine,detectServer} from './remote.mjs';
+import {createTextTool} from './app-text.mjs';
 
 const $=id=>document.getElementById(id),all=selector=>[...document.querySelectorAll(selector)];
 const ns='http://www.w3.org/2000/svg';
 const STORAGE='drawingbot-settings-v1',OLD_STORAGE='pen-studio-settings-v1';
-let settings={...DEFAULTS},source=demoPaths(),fileName='Roseta de estudo.svg',importWarnings=[];
+let settings={...DEFAULTS},source=demoPaths(),fileName='Roseta de estudo.svg',importWarnings=[],textSpec=null;
 try{const saved=JSON.parse(localStorage.getItem(STORAGE)||localStorage.getItem(OLD_STORAGE)||'null');if(saved)for(const key of Object.keys(DEFAULTS))if(key in saved)settings[key]=saved[key];}catch{}
 let job=null,server=null,zoom=1,showOriginal=true,toastTimer,pinOpen=false;
 const logs=[];
@@ -23,7 +24,7 @@ function readSettings(){
   try{localStorage.setItem(STORAGE,JSON.stringify(settings));}catch{}
 }
 function writeSettings(){for(const key of Object.keys(DEFAULTS))if($(key))$(key).value=settings[key];}
-function project(){return {format:PROJECT_FORMAT,version:1,fileName,settings:{...settings},paths:source};}
+function project(){return {format:PROJECT_FORMAT,version:1,fileName,settings:{...settings},paths:source,...(textSpec?{text:textSpec}:{})};}
 function prepare(){
   readSettings();
   try{job=createJob(source,settings);$('size-stat').textContent=`${format(job.bounds.width)} × ${format(job.bounds.height)} mm`;$('paths-stat').textContent=job.metrics.strokes;
@@ -39,7 +40,7 @@ function prepare(){
   for(const [key,value] of Object.entries({x:15+inset,y:8+inset,width:36-inset*2,height:34-inset*2}))$('offset-demo').setAttribute(key,value);
   $('tip-line').style.height=Math.max(1,Math.min(12,settings.tip*5))+'px';
   all('[data-tip]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.tip)===settings.tip));
-  $('file-name').textContent=fileName;$('bed-size').textContent=`${format(settings.bedWidth)} × ${format(settings.bedHeight)} mm`;
+  $('file-name').textContent=fileName;$('text-tool-label').textContent=textSpec?'Editar texto':'Escrever texto';$('bed-size').textContent=`${format(settings.bedWidth)} × ${format(settings.bedHeight)} mm`;
   renderPreview();renderMachine();
 }
 function duration(seconds){return seconds<60?`~ ${Math.ceil(seconds)} s`:`~ ${Math.ceil(seconds/60)} min`;}
@@ -102,7 +103,7 @@ function renderMachine(){
   $('stop').disabled=offline;
   document.body.classList.toggle('busy',s.busy||s.running);$('design-settings').disabled=s.running&&!remote;
   $('bedWidth').disabled=s.running;$('bedHeight').disabled=s.running;$('bedTarget').disabled=s.running;
-  for(const id of ['import','load-project','example'])$(id).disabled=s.running&&!remote;
+  for(const id of ['import','text-tool','load-project','example'])$(id).disabled=s.running&&!remote;
   const titles={running:s.simulated?'A simular o desenho…':'A desenhar…',pausing:'A levantar a caneta para pausar…',paused:'Em pausa · caneta levantada',stopping:'A terminar os movimentos em fila…',complete:s.simulated?'Simulação concluída':'Desenho concluído',cancelled:'Trabalho terminado · caneta levantada',error:'Trabalho interrompido'};
   $('run-title').textContent=offline?'Sem ligação ao DrawingBot':titles[s.runState]||(!s.connected?'Pronto para preparar a máquina':!s.homed?'Faz a origem X/Y':!s.zero?'Define o contacto da caneta':'Tudo pronto para desenhar');
   const jobName=s.job?.name?` · ${s.job.name}`:'';
@@ -175,14 +176,14 @@ function showHelp(){
 function download(name,text,type='text/plain'){
   const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
-const baseName=()=>fileName.replace(/\.[^.]+$/,'');
+const baseName=()=>fileName.replace(/\.(svg|json)$/i,'').replace(/\.(drawingbot|pen-studio)$/i,'');
 async function loadSVG(file){
   if(!file||(S().running&&!server))return;
-  try{const imported=await importSVG(await file.text());source=imported.paths;importWarnings=imported.warnings;fileName=file.name;zoom=1;prepare();toast(`${source.length} percursos importados.`);}catch(error){toast(error.message,true);}
+  try{const imported=await importSVG(await file.text());source=imported.paths;importWarnings=imported.warnings;fileName=file.name;textSpec=null;zoom=1;prepare();toast(`${source.length} percursos importados.`);}catch(error){toast(error.message,true);}
 }
 function loadProject(saved){
   const valid=validateProject(saved);
-  source=valid.paths;settings=valid.settings;fileName=valid.fileName;importWarnings=[];zoom=1;writeSettings();prepare();
+  source=valid.paths;settings=valid.settings;fileName=valid.fileName;importWarnings=[];textSpec=valid.text;zoom=1;writeSettings();prepare();
 }
 function paperChanged(){
   const formats={bed:[settings.bedWidth,settings.bedHeight],a4:[210,297],a4landscape:[297,210],a5:[148,210]};
@@ -206,7 +207,7 @@ function syncThemeColor(){const meta=document.querySelector('meta[name="theme-co
 $('theme-toggle').onclick=toggleTheme;syncThemeColor();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',syncThemeColor);
 $('connect').onclick=connect;$('simulate').onclick=simulate;$('help').onclick=()=>showHelp();
 $('import').onclick=()=>$('svg-file').click();$('svg-file').onchange=e=>{loadSVG(e.target.files[0]);e.target.value='';};
-$('example').onclick=()=>{source=demoPaths();importWarnings=[];fileName='Roseta de estudo.svg';prepare();};
+$('example').onclick=()=>{source=demoPaths();importWarnings=[];textSpec=null;fileName='Roseta de estudo.svg';prepare();};
 $('drop-target').ondragover=e=>{e.preventDefault();$('drop-target').classList.add('drop-active');};
 $('drop-target').ondragleave=()=>$('drop-target').classList.remove('drop-active');
 $('drop-target').ondrop=e=>{e.preventDefault();$('drop-target').classList.remove('drop-active');loadSVG(e.dataTransfer.files[0]);};
@@ -254,6 +255,22 @@ window.addEventListener('beforeunload',event=>{if(!server&&S().running){event.pr
 let installPrompt;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;$('install').classList.remove('hidden');});
 $('install').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('install').classList.add('hidden');}};
+
+const textTool=createTextTool({toast});
+$('text-tool').onclick=()=>{
+  readSettings();
+  // If the drawing was resized since, reopen with the letter height that matches the current width.
+  const spec=textSpec&&textSpec.width?{...textSpec,capHeight:Math.round(textSpec.capHeight*settings.width/textSpec.width*10)/10}:textSpec;
+  textTool.open({spec,onApply:(chosen,result)=>{
+    source=result.paths;importWarnings=[];
+    fileName=`Texto · ${chosen.content.trim().split(/\n/)[0].slice(0,32)}`;
+    const turned=Math.abs(Number(settings.rotation))%180===90;
+    settings.width=Math.round((turned?result.height:result.width)*10)/10;
+    textSpec={content:chosen.content,font:chosen.font,mode:chosen.mode,align:chosen.align,lineHeight:chosen.lineHeight,capHeight:chosen.capHeight,width:settings.width};
+    writeSettings();zoom=1;prepare();
+    toast(chosen.mode==='fill'?'Texto pronto: contorno e enchimento à medida da ponta.':'Texto pronto: um só traço por letra.');
+  }});
+};
 
 async function init(){
   writeSettings();prepare();

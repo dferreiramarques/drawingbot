@@ -28,3 +28,12 @@ DEALINGS IN THE SOFTWARE.
 
 svgpath 2.6.0, Copyright (C) 2013-2015 by Vitaly Puzrin.
 MIT license: vendor/svgpath-LICENSE.txt.
+
+opentype.js 1.3.4, Copyright (c) 2020 Frederik De Bleser. MIT license.
+Used in text.js to read the outline fonts of the text tool.
+
+hersheytext 2.0.0, Copyright (c) 2014 James T. MIT license.
+Source of the single-line (EMS and Hershey) font data in fonts/.
+
+Text tool fonts: see fonts/README.txt. Outline fonts and EMS fonts are under the
+SIL Open Font License 1.1 (fonts/OFL.txt).

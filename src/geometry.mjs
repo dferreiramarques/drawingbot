@@ -58,6 +58,57 @@ export function compensate(paths,tip,mode){
   if(closed.length&&!result.length)warnings.push('A ponta é demasiado larga: os contornos fechados desapareceram. Reduz a ponta ou aumenta o desenho.');
   return {paths:[...result.map(points=>({closed:true,points:toFloat(points)})),...structuredClone(open)],warnings,offset:(mode==='inside'?-1:1)*tip/2};
 }
+// Filled shapes (text in "letra preenchida"): the outline sits half a tip inside the shape and parallel
+// hatch lines cover the inside, so the ink matches the letter. Spacing slightly under the tip leaves no gaps.
+export const HATCH_OVERLAP=.85;
+export function fillPaths(paths,tip){
+  const rings=paths.filter(p=>p.closed&&p.points.length>=3).map(p=>toInt(p.points));
+  if(!rings.length)return {paths:[],warnings:[]};
+  const union=new Clipper.Clipper(),region=[];
+  union.AddPaths(rings,Clipper.PolyType.ptSubject,true);
+  union.Execute(Clipper.ClipType.ctUnion,region,Clipper.PolyFillType.pftNonZero,Clipper.PolyFillType.pftNonZero);
+  let inner=[];
+  const offset=new Clipper.ClipperOffset(2,.015*SCALE);offset.AddPaths(region,Clipper.JoinType.jtRound,Clipper.EndType.etClosedPolygon);offset.Execute(inner,-Number(tip)*SCALE/2);
+  const warnings=[];
+  if(!inner.length){warnings.push('As letras são mais finas do que a ponta: só o contorno será desenhado. Aumenta o texto ou usa uma ponta mais fina.');inner=region;}
+  const out=inner.map(points=>({closed:true,points:toFloat(points)}));
+  const spacing=Math.max(.05,Number(tip)*HATCH_OVERLAP)*SCALE;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const ring of inner)for(const p of ring){minX=Math.min(minX,p.X);minY=Math.min(minY,p.Y);maxX=Math.max(maxX,p.X);maxY=Math.max(maxY,p.Y);}
+  const lines=[];
+  for(let y=minY+spacing/2;y<maxY;y+=spacing)lines.push([{X:Math.floor(minX-SCALE),Y:Math.round(y)},{X:Math.ceil(maxX+SCALE),Y:Math.round(y)}]);
+  if(lines.length){
+    const clip=new Clipper.Clipper(),tree=new Clipper.PolyTree();
+    clip.AddPaths(lines,Clipper.PolyType.ptSubject,false);clip.AddPaths(inner,Clipper.PolyType.ptClip,true);
+    clip.Execute(Clipper.ClipType.ctIntersection,tree,Clipper.PolyFillType.pftNonZero,Clipper.PolyFillType.pftNonZero);
+    const segments=Clipper.Clipper.OpenPathsFromPolyTree(tree).filter(s=>s.length>=2).map(s=>toFloat(s[0].X<=s.at(-1).X?s:[...s].reverse()));
+    out.push(...zigzag(segments,spacing/SCALE).map(points=>({closed:false,points})));
+  }
+  return {paths:out,warnings};
+}
+// Joins hatch segments of neighbouring rows into continuous zig-zags, so the pen does not lift for every line.
+// Only short hops are joined: they run along the edge, inside the half-tip margin of the outline.
+function zigzag(segments,spacing){
+  const rows=new Map();
+  for(const s of segments){const key=Math.round(s[0].y/spacing);if(!rows.has(key))rows.set(key,[]);rows.get(key).push(s);}
+  const keys=[...rows.keys()].sort((a,b)=>a-b),used=new Set(),chains=[],maxHop=spacing*2.2;
+  for(const key of keys)rows.get(key).sort((a,b)=>a[0].x-b[0].x);
+  for(const startKey of keys)for(const first of rows.get(startKey)){
+    if(used.has(first))continue;
+    used.add(first);let chain=[...first],key=startKey;
+    for(;;){
+      const end=chain.at(-1),next=rows.get(key+1);if(!next)break;
+      let best=null,bestD=maxHop,flip=false;
+      for(const s of next){if(used.has(s))continue;
+        const d0=distance(end,s[0]),d1=distance(end,s.at(-1));
+        if(d0<bestD){best=s;bestD=d0;flip=false;}if(d1<bestD){best=s;bestD=d1;flip=true;}}
+      if(!best)break;
+      used.add(best);chain.push(...(flip?[...best].reverse():best));key++;
+    }
+    chains.push(chain);
+  }
+  return chains;
+}
 export function orderPaths(paths){
   const pending=structuredClone(paths),result=[];let cursor={x:0,y:0};
   while(pending.length){let selected=0,best=Infinity,reverse=false,start=0;
@@ -81,8 +132,11 @@ export function createJob(source,options={}){
   if(settings.bedWidth>300||settings.bedHeight>300||settings.bedWidth<20||settings.bedHeight<20)throw Error('A área útil desta CR-10 deve ficar entre 20 e 300 mm por eixo.');
   if(!Number.isFinite(Number(settings.bedTarget))||settings.bedTarget<0||settings.bedTarget>60)throw Error('A temperatura opcional da cama deve ficar entre 0 e 60 °C.');
   for(const key of ['originX','originY','drawZ','paperX','paperY','rotation'])if(!Number.isFinite(Number(settings[key])))throw Error('As coordenadas devem ser números.');
-  const original=placePaths(source,settings),offset=compensate(original,Number(settings.tip),settings.compensation);
-  const paths=orderPaths(offset.paths.filter(p=>p.points.length>=2));
+  const original=placePaths(source,settings);
+  const filled=fillPaths(original.filter(p=>p.fill&&p.closed),Number(settings.tip));
+  const offset=compensate(original.filter(p=>!(p.fill&&p.closed)),Number(settings.tip),settings.compensation);
+  offset.warnings.push(...filled.warnings);
+  const paths=orderPaths([...offset.paths,...filled.paths].filter(p=>p.points.length>=2));
   if(!paths.length)throw Error(offset.warnings.at(-1)||'Não existem percursos para desenhar.');
   const b=bounds(paths),r=Number(settings.tip)/2,errors=[];
   if(b.minX-r<0||b.minY-r<0||b.maxX+r>settings.bedWidth||b.maxY+r>settings.bedHeight)errors.push('O traço da caneta sai da área da máquina. Ajusta a posição, o tamanho ou a ponta.');
@@ -133,6 +187,13 @@ export function demoPaths(){
   return paths;
 }
 export const PROJECT_FORMAT='drawingbot';
+// Text settings stored with a project so the text can be edited again. Unknown or invalid values are dropped.
+export function validateTextSpec(text){
+  if(!text||typeof text!=='object'||typeof text.content!=='string'||typeof text.font!=='string')return null;
+  const n=(v,lo,hi,d)=>Number.isFinite(Number(v))&&Number(v)>=lo&&Number(v)<=hi?Number(v):d;
+  return {content:text.content.slice(0,2000),font:text.font.slice(0,60),mode:text.mode==='line'?'line':'fill',
+    align:['left','center','right'].includes(text.align)?text.align:'center',lineHeight:n(text.lineHeight,.5,4,1.25),capHeight:n(text.capHeight,.5,300,20),width:n(text.width,.1,2000,null)};
+}
 // Validates a saved or uploaded project and returns {fileName,settings,paths}. Accepts older pen-studio files.
 export function validateProject(saved){
   if(!saved||typeof saved!=='object'||!['drawingbot','pen-studio'].includes(saved.format)||saved.version!==1||!Array.isArray(saved.paths))throw Error('Projeto incompatível.');
@@ -146,7 +207,7 @@ export function validateProject(saved){
   if(count>180000)throw Error('Demasiados pontos no projeto.');
   const settings={...DEFAULTS};
   if(saved.settings&&typeof saved.settings==='object')for(const key of Object.keys(DEFAULTS))if(key in saved.settings)settings[key]=saved.settings[key];
-  const paths=saved.paths.map(p=>({closed:p.closed,points:p.points.map(v=>({x:v.x,y:v.y}))}));
+  const paths=saved.paths.map(p=>({closed:p.closed,...(p.fill===true&&p.closed?{fill:true}:{}),points:p.points.map(v=>({x:v.x,y:v.y}))}));
   createJob(paths,settings);
-  return {fileName:String(saved.fileName||'Projeto.svg').slice(0,200),settings,paths};
+  return {fileName:String(saved.fileName||'Projeto.svg').slice(0,200),settings,paths,text:validateTextSpec(saved.text)};
 }

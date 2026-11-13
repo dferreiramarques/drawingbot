@@ -18,6 +18,7 @@
     <aside class="design-panel panel">
       <div class="section-title"><span class="section-index">01</span><h2>Preparar desenho</h2></div>
       <button id="import" class="upload-card"><span class="upload-icon">↥</span><strong>Importar um SVG</strong><span>ou arrasta o ficheiro para a mesa</span></button>
+      <button id="text-tool" class="text-card"><span class="text-card-icon" aria-hidden="true">Aa</span><span><strong id="text-tool-label">Escrever texto</strong><small>Letra preenchida ou de linha única</small></span></button>
       <div class="file-chip"><span class="file-icon">◇</span><span id="file-name">Roseta de estudo.svg</span><button id="example" title="Carregar o exemplo" aria-label="Carregar o exemplo">↻</button></div>
       <fieldset id="design-settings">
       <div class="setting-section"><h3>A caneta <span class="mini-tag">flutuante</span></h3><label for="tip">Espessura do traço <span class="label-unit">mm</span></label><div class="tip-input"><span class="tip-line" id="tip-line"></span><input id="tip" type="number" min="0.05" max="10" step="0.05" value="0.5" inputmode="decimal"><span>mm</span></div><div class="tip-presets" aria-label="Espessuras comuns"><button data-tip="0.2">0,2</button><button data-tip="0.3">0,3</button><button data-tip="0.5" class="selected">0,5</button><button data-tip="0.8">0,8</button><button data-tip="1">1,0</button></div><p class="hint">Usa a largura real de uma linha no papel.</p>
@@ -51,6 +52,25 @@
   <footer><span><i class="tiny-dot teal"></i> Feito para o ritmo da tua caneta. <a href="https://github.com/dferreiramarques/drawingbot" target="_blank" rel="noopener">Código e guia de montagem</a></span><span>Ficheiros e projetos ficam neste dispositivo <span class="footer-separator">·</span> <span id="offline-status">Pronto para trabalhar offline</span></span></footer>
 </main>
 <input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden><input id="project-file" type="file" accept=".json,application/json" hidden>
+<dialog id="text-dialog" aria-labelledby="text-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form>
+  <h2 id="text-title">Texto</h2>
+  <label for="text-content">Texto a desenhar</label>
+  <textarea id="text-content" rows="3" spellcheck="false" placeholder="Escreve aqui. Enter muda de linha."></textarea>
+  <div class="segmented" role="radiogroup" aria-label="Modo do texto">
+    <button type="button" role="radio" data-text-mode="fill"><strong>Letra preenchida</strong><small>Contorno e enchimento à medida da ponta</small></button>
+    <button type="button" role="radio" data-text-mode="line"><strong>Linha única</strong><small>Um só traço por letra, como num escantilhão</small></button>
+  </div>
+  <div id="text-fonts" class="font-grid"></div>
+  <div class="text-options">
+    <div><label for="text-cap">Altura das maiúsculas <span class="label-unit">mm</span></label><input id="text-cap" type="number" min="1" max="300" step="0.5" inputmode="decimal"></div>
+    <div><label for="text-line">Entre linhas</label><select id="text-line"><option value="1">1,0</option><option value="1.25">1,25</option><option value="1.5">1,5</option><option value="2">2,0</option></select></div>
+    <div><span class="field-label" id="text-align-label">Alinhamento</span><div class="segmented compact" role="radiogroup" aria-labelledby="text-align-label"><button type="button" role="radio" data-text-align="left">Esquerda</button><button type="button" role="radio" data-text-align="center">Centro</button><button type="button" role="radio" data-text-align="right">Direita</button></div></div>
+  </div>
+  <div class="text-preview"><svg id="text-preview" role="img" aria-label="Pré-visualização do texto"></svg></div>
+  <p id="text-status" class="text-status" role="status"></p>
+  <div class="dialog-actions"><button type="button" id="text-cancel" class="button secondary">Cancelar</button><button type="button" id="text-apply" class="button primary">Usar texto</button></div>
+</dialog>
 <dialog id="modal"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><div id="modal-content"></div></dialog><div id="toast" role="status" aria-live="polite"></div>
 <script src="./app.js" defer></script>
 </body></html>

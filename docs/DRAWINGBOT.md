@@ -30,6 +30,21 @@ No fim de um desenho completo (USB ou G-code exportado), a caneta sobe para Z10 
 Após confirmar o levantamento, Y avança até ao máximo configurado (300 mm por defeito),
 sem alterar X. Pausar durante esta sequência mantém os 10 mm de folga.
 
+## Texto
+
+«Escrever texto» abre a ferramenta de texto. Há dois modos, cada um com 8 tipos de letra
+(2 serifados, 2 sem serifa, 2 técnicos e 2 divertidos):
+
+- **Letra preenchida:** o contorno fica meia ponta para dentro e o interior é preenchido com linhas
+  paralelas em ziguezague, com espaçamento ligeiramente inferior à ponta. A tinta respeita a forma da letra.
+  Letras mais finas do que a ponta ficam só com o contorno.
+- **Linha única:** cada letra é desenhada com um só traço, como num escantilhão (fontes Hershey e EMS).
+  É muito mais rápido e serve bem para canetas finas.
+
+A altura indicada é a das maiúsculas. Depois de aplicado, o texto comporta-se como um desenho:
+a largura, a rotação e a posição ajustam-se no painel. «Editar texto» volta a abrir o texto, que
+também fica guardado nos projetos.
+
 ## Instalação local
 
 ```

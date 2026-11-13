@@ -205,7 +205,7 @@ async function api(req,res,path){
   throw httpError(404,'Endereço desconhecido.');
 }
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json',
-  '.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.txt':'text/plain; charset=utf-8','.ico':'image/x-icon'};
+  '.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.woff':'font/woff','.png':'image/png','.txt':'text/plain; charset=utf-8','.ico':'image/x-icon'};
 async function staticFile(req,res,pathname){
   if(!['GET','HEAD'].includes(req.method))throw httpError(405,'Método não suportado.');
   let file=resolve(STATIC,'.'+decodeURIComponent(pathname));

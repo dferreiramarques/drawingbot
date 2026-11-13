@@ -394,3 +394,50 @@ body.busy #design-settings,body.busy #import,body.busy #use-position,body.busy #
   .header-actions #connect{padding:8px 10px}
   .header-actions #connect span{display:none}
 }
+
+/* ---------- Text tool ---------- */
+.text-card{width:100%;display:flex;align-items:center;gap:12px;margin-top:8px;padding:11px 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-2);text-align:left}
+.text-card:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-line)}
+.text-card-icon{width:34px;height:34px;border-radius:7px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:Georgia,"Times New Roman",serif;font-size:17px;font-weight:700;flex-shrink:0}
+.text-card strong{display:block;font-size:13px;font-weight:600;color:var(--text)}
+.text-card small{display:block;font-size:12px;color:var(--muted)}
+body.busy #text-tool{pointer-events:none;opacity:.55}
+#text-dialog{width:min(860px,94vw);max-height:92vh;padding:26px 28px 24px}
+#text-dialog h2{margin-bottom:16px}
+#text-content{width:100%;min-height:76px;resize:vertical;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text);padding:10px 12px;font:inherit;font-size:16px;line-height:1.4}
+#text-content:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.segmented{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0}
+.segmented button{border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text-2);padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.segmented button strong{font-size:14px;font-weight:650;color:var(--text)}
+.segmented button small{font-size:12px;color:var(--muted)}
+.segmented button:hover{border-color:var(--accent-line)}
+.segmented button[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.segmented.compact{grid-template-columns:repeat(3,1fr);margin:0}
+.segmented.compact button{padding:0 6px;height:38px;font-size:12px;font-weight:600;align-items:center;justify-content:center;text-align:center}
+.font-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.font-column{display:flex;flex-direction:column;gap:6px;min-width:0}
+.font-category{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.font-option{display:flex;flex-direction:column;align-items:stretch;gap:4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);padding:8px;min-width:0}
+.font-option:hover{border-color:var(--accent-line)}
+.font-option[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.font-option svg{width:100%;height:38px}
+.font-option span{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.text-ink-fill{fill:var(--text);stroke:none}
+.text-ink-line{fill:none;stroke:var(--text);stroke-linecap:round;stroke-linejoin:round}
+.text-options{display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:12px;margin:16px 0 12px;align-items:end}
+.field-label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:6px}
+.text-preview{border:1px solid var(--line);border-radius:10px;background:var(--pv-paper);height:150px;padding:10px;display:flex}
+.text-preview svg{width:100%;height:100%}
+.text-status{font-size:12px;color:var(--muted);margin:8px 0 0;min-height:18px}
+.text-status.warning{color:var(--warn-text)}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+dialog .dialog-actions .button{width:auto;margin-top:0}
+@media(max-width:720px){
+  #text-dialog{padding:22px 16px 18px}
+  .font-grid{grid-template-columns:1fr 1fr}
+  .text-options{grid-template-columns:1fr 1fr}
+  .text-options>div:last-child{grid-column:1/-1}
+  .segmented button small{display:none}
+  .text-preview{height:120px}
+  .dialog-actions .button{flex:1}
+}

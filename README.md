@@ -49,6 +49,7 @@ depois de `npm run build`.
 ## Funcionalidades
 
 - Importação SVG, tamanho, rotação e posição na cama.
+- Ferramenta de texto com 16 tipos de letra: **letra preenchida** (contorno e enchimento em ziguezague à medida da ponta) ou **linha única** (um só traço por letra, tipo escantilhão), com acentos portugueses.
 - Espessura real da ponta; compensação de contornos por meia espessura, por dentro ou fora.
 - Linhas abertas mantêm o eixo; texto e símbolos devem ser convertidos em caminhos.
 - Controlo USB, origem X/Y, zero Z manual e suporte flutuante pelo peso da caneta.
@@ -83,4 +84,5 @@ para não obrigar a regravar a placa.
 O Marlin conserva a licença GPL e os avisos originais dentro da pasta do firmware.
 Os avisos das bibliotecas de geometria estão em `public/THIRD-PARTY.txt` e `public/vendor/`.
 O suporte da caneta é o [Pen Holder for Ender 3 / CR 10](https://www.thingiverse.com/thing:4721453) de umer3d (CC BY 4.0).
+Os tipos de letra da ferramenta de texto (OFL 1.1 e Hershey) estão descritos em `public/fonts/README.txt`.
 O pacote do Pi inclui `serialport` (MIT). Não é atribuída uma licença adicional ao código próprio.
