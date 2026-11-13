@@ -127,7 +127,6 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- Layout ---------- */
 main{max-width:1740px;margin:auto;padding:22px 36px 0}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .project-actions{display:flex;gap:2px;padding-right:10px;margin-right:2px;border-right:1px solid var(--line)}
 .project-actions .button{gap:7px;padding-inline:10px}
 .project-actions svg{width:16px;height:16px;flex-shrink:0}
