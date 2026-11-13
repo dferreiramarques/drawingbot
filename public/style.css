@@ -245,10 +245,6 @@ details[open]>summary>span{transform:rotate(45deg)}
 .pi-jobs .hint{margin:4px 0 0}
 
 /* ---------- Machine panel ---------- */
-.offline-note{border:1px solid var(--line);background:var(--sunken);border-radius:8px;padding:16px 14px;text-align:center;margin-bottom:18px}
-.offline-symbol{font-size:24px;color:var(--faint);display:block;margin-bottom:4px}
-.offline-note strong{font-size:14px;font-weight:600;color:var(--text)}
-.offline-note p{font-size:12px;color:var(--muted);line-height:1.6;margin:6px 0 10px}
 .position-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px}
 .position-readout>div{background:var(--sunken);border:1px solid var(--line);border-radius:7px;padding:9px 10px;position:relative;display:flex;flex-direction:column;gap:6px}
 .position-readout span{font-size:12px;font-weight:700;color:var(--muted)}
@@ -337,8 +333,7 @@ body.busy #design-settings,body.busy #import,body.busy #use-position,body.busy #
   .workspace{grid-template-columns:270px minmax(320px,1fr);gap:14px}
   .machine-panel{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;align-items:start}
   .machine-panel>.section-title{grid-column:1/-1;margin:0}
-  .machine-panel>.offline-note{grid-column:1;margin:0}
-  .machine-panel>.position-readout{grid-column:2;margin:0}
+  .machine-panel>.position-readout{grid-column:1/3;grid-row:2;margin:0}
   .reference-steps{grid-column:3;grid-row:2;margin:0}
   .reference-buttons{grid-column:3;grid-row:3}
   .jog-section{grid-column:1;grid-row:3/6;margin:0}
@@ -362,7 +357,7 @@ body.busy #design-settings,body.busy #import,body.busy #use-position,body.busy #
   .design-panel{width:100%;order:2}
   .preview-panel{width:100%;order:1}
   .machine-panel{width:100%;order:3;display:block;padding:20px}
-  .machine-panel>.section-title,.machine-panel>.offline-note{margin-bottom:18px}
+  .machine-panel>.section-title{margin-bottom:18px}
   .machine-panel>.position-readout{margin-bottom:20px}
   .reference-steps{margin-bottom:15px}
   .jog-section,.machine-details,.bed-control{margin-top:20px}

@@ -157,8 +157,6 @@ function renderMachine(){
   $('connection-badge').replaceChildren(document.createElement('i'),document.createTextNode((remote&&!offline?'DrawingBot · ':'')+label));
   $('connect').textContent=s.connecting?'A preparar…':s.connected?'Desligar USB':'Ligar máquina ↗';$('connect').disabled=s.connecting||s.running||s.busy||offline;
   $('machine-indicator').className='tiny-dot'+(s.connected?' teal':'');
-  $('offline-note').classList.toggle('hidden',s.connected);
-  $('offline-copy').textContent=remote?'Liga a CR-10 por USB ao DrawingBot. A ligação é feita automaticamente.':'Liga a CR-10 por USB para controlar os eixos e enviar o desenho.';
   for(const id of ['home','zero','pen-up','bed-off','bed-apply','endstops','release'])$(id).disabled=!ready||locked;
   $('use-position').disabled=!ready||locked||!editor.selected;
   $('pen-down').disabled=!ready||locked||!s.zero;
