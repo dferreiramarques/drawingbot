@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-13",
+  "automated_tests_passed": 17,
+  "browser_checks": [
+    "SVG import with transforms, relative compound subpaths and a curve",
+    "Inside compensation by radius with open-path warning",
+    "Job start and export blocked when physical ink exceeds bounds",
+    "Simulated XY homing and manual Z zero with automatic lift",
+    "Pause, resume, controlled cancellation, and complete simulated job",
+    "Mobile viewport 390px without horizontal overflow",
+    "Reload from service-worker cache after local server stopped",
+    "Optional bed setpoint and off control in simulation"
+  ],
+  "real_browser_usb_tested": false,
+  "local_server_health_checked": true,
+  "published_deployment_verified": true,
+  "completion_parking": {
+    "z_mm": 10,
+    "y": "configured maximum (default 300 mm)",
+    "x": "unchanged",
+    "lift_completed_before_y_move": true,
+    "simulated_final_position": {
+      "x": 30,
+      "y": 300,
+      "z": 10
+    }
+  }
+}
