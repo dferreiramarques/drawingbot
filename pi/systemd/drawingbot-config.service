@@ -1,0 +1,14 @@
+[Unit]
+Description=DrawingBot: aplicar drawingbot.txt (Wi-Fi, nome, PIN)
+After=NetworkManager.service systemd-hostnamed.socket
+Wants=NetworkManager.service
+Before=drawingbot.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/drawingbot-apply-config
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

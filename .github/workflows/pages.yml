@@ -1,4 +1,4 @@
-name: Publicar Pen Studio no GitHub Pages
+name: Publicar DrawingBot no GitHub Pages
 
 on:
   push:
@@ -27,7 +27,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
+      - run: npm run build:pi
+      - name: Pacote do Raspberry Pi
+        run: |
+          mkdir -p dist/pi
+          cp dist-pi/drawingbot-pi.tar.gz dist/pi/
+          cp dist-pi/drawingbot/install.sh dist/pi/install.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

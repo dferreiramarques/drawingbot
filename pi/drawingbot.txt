@@ -1,0 +1,29 @@
+# DrawingBot · configuração
+#
+# Este ficheiro está na partição "bootfs" do cartão SD. Podes editá-lo em
+# qualquer computador (Bloco de Notas, TextEdit, ...). As alterações são
+# aplicadas no próximo arranque do Raspberry Pi.
+# Por SSH: sudo nano /boot/firmware/drawingbot.txt
+#          sudo drawingbot-apply-config
+
+# --- Rede Wi-Fi (o Pi Zero 2 W só usa 2,4 GHz) ---
+# Deixa wifi_ssid vazio para manter a rede que já está configurada.
+wifi_ssid=
+wifi_password=
+# yes se a rede não aparecer na lista (SSID oculto)
+wifi_hidden=no
+# Código do país em duas letras: PT, BR, ES, FR, GB, ...
+wifi_country=PT
+
+# --- Nome na rede ---
+# A app fica em http://<hostname>.local (por exemplo http://drawingbot.local)
+hostname=drawingbot
+
+# --- Acesso ---
+# PIN opcional (letras e números) para controlar a máquina pela rede.
+# Vazio = sem PIN: qualquer pessoa nesta rede pode mover a máquina.
+pin=
+
+# --- Máquina ---
+# Porta USB da CR-10. "auto" encontra-a sozinha; ou por exemplo /dev/ttyUSB0
+serial_port=auto

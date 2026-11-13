@@ -1,4 +1,4 @@
-Pen Studio uses the following open-source software:
+DrawingBot uses the following open-source software:
 
 Clipper 6.4.2, Angus Johnson 2010-2017, JavaScript port by Timo.
 The source and original notices are included in vendor/clipper-source.js.

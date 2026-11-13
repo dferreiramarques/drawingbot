@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import {MarlinLink,JobRunner} from '../src/serial.mjs';
 test('stale ACKs cannot satisfy a position query before a position line arrives',async()=>{
   const link=new MarlinLink();link.connected=true;
-  link.writer={write:async()=>{queueMicrotask(()=>{link.feed('ok');link.feed('X:12.50 Y:8.00 Z:3.00 Count X:1000 Y:640 Z:1200');link.feed('ok');});}};
+  link.transport={write:async()=>{queueMicrotask(()=>{link.feed('ok');link.feed('X:12.50 Y:8.00 Z:3.00 Count X:1000 Y:640 Z:1200');link.feed('ok');});}};
   assert.deepEqual(await link.position(),{x:12.5,y:8,z:3});
 });
 test('an AVR restart rejects the pending operation and invalidates references',async()=>{
   let reset=false;const link=new MarlinLink({onReset:()=>reset=true});link.connected=true;
-  link.writer={write:async()=>queueMicrotask(()=>link.feed('start'))};
+  link.transport={write:async()=>queueMicrotask(()=>link.feed('start'))};
   await assert.rejects(link.command('M400'),/reiniciou/);assert.equal(reset,true);
 });
 test('firmware error cannot be mistaken for a successful motion',async()=>{
-  const link=new MarlinLink();link.connected=true;link.writer={write:async()=>queueMicrotask(()=>link.feed('Error:Printer halted'))};
+  const link=new MarlinLink();link.connected=true;link.transport={write:async()=>queueMicrotask(()=>link.feed('Error:Printer halted'))};
   await assert.rejects(link.command('G28 X Y'),/halted/);
 });
 test('pause drains motion, lifts the pen and resumes at drawing height',async()=>{

@@ -1,26 +1,44 @@
-# Drawing Robot / Pen Studio
+# DrawingBot
 
 Conversão de uma CR-10 numa máquina de desenho com canetas flutuantes.
-Inclui a PWA Pen Studio e o firmware Marlin configurado para a máquina.
+Inclui a app DrawingBot, o servidor para Raspberry Pi e o firmware Marlin configurado para a máquina.
 
-## PWA
+## Três formas de usar
 
-Requisitos: Node.js e npm. Para o lançador local, Python 3.
+| Modo | Onde corre | Ligação à CR-10 |
+|---|---|---|
+| **Online** | https://dferreiramarques.github.io/drawingbot/ (Chrome ou Edge) | USB ao computador (Web Serial) |
+| **Raspberry Pi** | `http://drawingbot.local` em qualquer browser da rede | USB ao Pi Zero 2 W, que corre os desenhos sozinho |
+| **Local** | `npm run build` e servir `dist/` em localhost | USB ao computador |
+
+Sem máquina, «Experimentar sem ligar» simula o equipamento (modo online e local).
+
+## Raspberry Pi (DrawingBot na rede)
+
+Guia completo em [docs/RASPBERRY-PI.md](docs/RASPBERRY-PI.md). Resumo:
+
+1. Gravar **Raspberry Pi OS Lite (64-bit)** com o Raspberry Pi Imager, com Wi-Fi e SSH.
+2. Por SSH: `curl -fsSL https://dferreiramarques.github.io/drawingbot/pi/install.sh | sudo bash`
+3. Abrir `http://drawingbot.local`. Os projetos são enviados para o Pi e desenhados por ele:
+   o browser pode fechar sem interromper o desenho.
+4. Wi-Fi, nome na rede e PIN ficam em `drawingbot.txt`, na raiz da partição `bootfs` do cartão SD,
+   editável em qualquer computador.
+
+## Desenvolvimento
+
+Requisitos: Node.js 18+ e npm.
 
 ```sh
 npm ci
-npm test
-npm run build
-python -m http.server 8788 --bind 127.0.0.1 --directory dist
+npm test           # geometria, protocolo, máquina, servidor do Pi e drawingbot.txt
+npm run build      # app em dist/
+npm run pi:dev     # servidor do Pi em simulação: http://localhost:8790
+npm run build:pi   # pacote do Pi em dist-pi/drawingbot-pi.tar.gz
 ```
 
-Abrir http://localhost:8788 em Chrome ou Edge. A ligação USB usa 115200 baud.
-A app é instalável como PWA e funciona offline depois da primeira abertura.
-No Windows também é possível abrir `local/Abrir Pen Studio.cmd` depois da compilação.
-
-Para publicar num alojamento estático, compilar e publicar o conteúdo de `dist/` por HTTPS.
-Não são necessárias chaves, credenciais ou contas de serviços para executar a cópia local.
-A ligação USB pelo navegador exige selecionar a porta no próprio navegador.
+Cada push para `main` corre os testes e publica a app e o pacote do Pi no GitHub Pages
+(`.github/workflows/pages.yml`). No Windows também é possível abrir `local/Abrir DrawingBot.cmd`
+depois de `npm run build`.
 
 ## Funcionalidades
 
@@ -31,37 +49,30 @@ A ligação USB pelo navegador exige selecionar a porta no próprio navegador.
 - Pausa/retoma, terminação controlada e emergência M112.
 - No fim de um desenho completo: levantar para Z10 mm, aguardar e levar Y ao máximo configurado.
 - Exportação G-code, projetos JSON e cama opcional sem espera por aquecimento.
+- Raspberry Pi: projetos guardados no Pi, desenho a correr no Pi, PIN opcional, configuração por ficheiro de texto.
 
 O G-code exportado não faz homing nem define o zero: as referências são manuais.
-Consultar `docs/PEN-STUDIO.md` para os pormenores de utilização e limitações SVG.
+Consultar [docs/DRAWINGBOT.md](docs/DRAWINGBOT.md) para os pormenores de utilização e limitações SVG.
 
 ## Firmware
 
 Fontes completas configuradas em `firmware/Marlin-2.1.2/`.
 Consultar `firmware/README.md` antes de compilar.
-O build da PWA não compila nem instala firmware automaticamente.
+A app identifica a placa pelo nome de firmware `CR-10 Desenho`; esse nome mantém-se no firmware
+para não obrigar a regravar a placa.
 
 ## Estrutura
 
-- `src/`, `public/`: código e recursos da PWA.
-- `tests/`: testes de geometria, comunicação e fim de desenho.
+- `src/`: app (geometria, SVG, protocolo Marlin, regras da máquina, cliente do Pi).
+- `public/`: HTML, CSS, ícones e service worker.
+- `pi/`: servidor do Raspberry Pi, instalador, `drawingbot.txt` e serviços systemd.
+- `tests/`: testes automáticos.
 - `local/`: lançador Windows e servidor local, sem dependências Python externas.
 - `firmware/`: Marlin, configuração e patch face à versão oficial.
-- `docs/`: utilização e registo de validação.
-
-## Git
-
-Este ZIP não inclui histórico `.git`, dependências instaladas, resultados de compilação,
-credenciais de publicação, configuração de alojamento ligada à conta ou backups da máquina.
-
-```sh
-git init
-git add .
-git commit -m "Initial Drawing Robot project"
-```
+- `docs/`: utilização, Raspberry Pi e registo de validação.
 
 ## Licenças
 
 O Marlin conserva a licença GPL e os avisos originais dentro da pasta do firmware.
 Os avisos das bibliotecas de geometria estão em `public/THIRD-PARTY.txt` e `public/vendor/`.
-Não é atribuída uma licença adicional ao código próprio neste pacote.
+O pacote do Pi inclui `serialport` (MIT). Não é atribuída uma licença adicional ao código próprio.

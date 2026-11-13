@@ -1,10 +1,10 @@
-# Pen Studio
+# DrawingBot
 
-PWA para a CR-10 com MKS Gen V1.4 e firmware CR-10 Desenho / Marlin 2.1.2.
+App para a CR-10 com MKS Gen V1.4 e firmware CR-10 Desenho / Marlin 2.1.2.
 
 ## Utilização
 
-Abrir em Chrome ou Edge no computador ligado por USB e escolher «Ligar máquina».
+Abrir em Chrome ou Edge no computador ligado por USB (ou, com o Raspberry Pi, em `http://drawingbot.local` — ver `RASPBERRY-PI.md`) e escolher «Ligar máquina».
 A app espera pelo arranque da placa a 115200 baud. Cada nova ligação invalida as referências:
 fazer origem X/Y com caneta levantada, aproximar a ponta em passos de 0,1 mm e definir zero Z.
 O botão define o contacto e levanta automaticamente a caneta. O suporte é flutuante: desenhar

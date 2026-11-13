@@ -117,7 +117,7 @@ export function jobCommands(job,{origin={x:0,y:0}}={}){
   add('M400',park);return commands;
 }
 export function exportGcode(job){
-  return ['; PEN STUDIO - Drawing Robot / Marlin',`; Ponta ${job.settings.tip} mm | compensacao ${job.settings.compensation} | deslocamento ${job.offset.toFixed(3)} mm`,
+  return ['; DRAWINGBOT - Marlin',`; Ponta ${job.settings.tip} mm | compensacao ${job.settings.compensation} | deslocamento ${job.offset.toFixed(3)} mm`,
     '; Antes de executar: origem X/Y e zero Z manual no papel.',
     '; Este ficheiro nao faz homing nem define o zero automaticamente.',
     ...jobCommands(job).map(c=>c.code),`; Terminado: Z10 mm, Y${number(job.settings.bedHeight)} mm. Motores mantidos ativos.`].join('\n')+'\n';
@@ -131,4 +131,22 @@ export function demoPaths(){
   }
   paths.push({closed:true,points:[{x:0,y:0},{x:120,y:0},{x:120,y:120},{x:0,y:120}]});
   return paths;
+}
+export const PROJECT_FORMAT='drawingbot';
+// Validates a saved or uploaded project and returns {fileName,settings,paths}. Accepts older pen-studio files.
+export function validateProject(saved){
+  if(!saved||typeof saved!=='object'||!['drawingbot','pen-studio'].includes(saved.format)||saved.version!==1||!Array.isArray(saved.paths))throw Error('Projeto incompatível.');
+  let count=0;
+  for(const path of saved.paths){
+    if(!path||typeof path.closed!=='boolean'||!Array.isArray(path.points)||path.points.length<2)throw Error('Percurso inválido.');
+    count+=path.points.length;
+    for(const p of path.points)if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y)||Math.abs(p.x)>1e7||Math.abs(p.y)>1e7)throw Error('Coordenada inválida.');
+  }
+  if(!saved.paths.length)throw Error('O projeto não tem percursos.');
+  if(count>180000)throw Error('Demasiados pontos no projeto.');
+  const settings={...DEFAULTS};
+  if(saved.settings&&typeof saved.settings==='object')for(const key of Object.keys(DEFAULTS))if(key in saved.settings)settings[key]=saved.settings[key];
+  const paths=saved.paths.map(p=>({closed:p.closed,points:p.points.map(v=>({x:v.x,y:v.y}))}));
+  createJob(paths,settings);
+  return {fileName:String(saved.fileName||'Projeto.svg').slice(0,200),settings,paths};
 }

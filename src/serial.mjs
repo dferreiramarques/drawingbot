@@ -1,7 +1,27 @@
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+export const FIRMWARE_ID='CR-10 Desenho';
+
+// Transport over the browser Web Serial API (USB connected to this computer).
+export class WebSerialTransport {
+  constructor(port){this.port=port;}
+  async open(){
+    await this.port.open({baudRate:115200,bufferSize:8192});
+    try{await this.port.setSignals({dataTerminalReady:false,requestToSend:false});}catch{}
+    this.writer=this.port.writable.getWriter();this.reader=this.port.readable.getReader();
+  }
+  read(){return this.reader.read();}
+  write(bytes){return this.writer.write(bytes);}
+  async close(){
+    try{await this.reader?.cancel();}catch{}
+    try{this.reader?.releaseLock();}catch{}
+    try{this.writer?.releaseLock();await this.port.close();}catch{}
+  }
+}
+
 export class MarlinLink {
-  constructor({onLine=()=>{},onReset=()=>{},onDisconnect=()=>{}}={}){
-    this.onLine=onLine;this.onReset=onReset;this.onDisconnect=onDisconnect;this.pending=null;this.chain=Promise.resolve();this.connected=false;this.closing=false;
+  constructor({transport,onLine=()=>{},onReset=()=>{},onDisconnect=()=>{},bootDelay=8500}={}){
+    this.transport=transport;this.onLine=onLine;this.onReset=onReset;this.onDisconnect=onDisconnect;this.bootDelay=bootDelay;
+    this.pending=null;this.chain=Promise.resolve();this.connected=false;this.closing=false;
   }
   feed(line){
     line=line.trim();if(!line)return;
@@ -17,17 +37,15 @@ export class MarlinLink {
     if(p.expect&&p.expect(line))p.seen=true;
     if(/^ok(?:\s|$)/.test(line)&&p.seen)p.resolve(p.lines.join('\n'));
   }
-  async connect(port){
-    this.closing=false;this.port=port;
-    await port.open({baudRate:115200,bufferSize:8192});
-    try{await port.setSignals({dataTerminalReady:false,requestToSend:false});}catch{}
-    this.writer=port.writable.getWriter();this.reader=port.readable.getReader();
+  async connect(){
+    this.closing=false;
+    await this.transport.open();
     this.connected=true;this.readTask=this.readLoop();
-    await sleep(8500); // The AVR and SD initialization may outlast a normal serial handshake.
+    await sleep(this.bootDelay); // The AVR and SD initialization may outlast a normal serial handshake.
     await this.sync();
     const identity=await this.command('M115',{expect:line=>line.includes('FIRMWARE_NAME:')});
-    if(!identity.includes('EXTRUDER_COUNT:0')||!identity.includes('CR-10 Desenho')){
-      await this.disconnect();throw Error('A placa não está na versão CR-10 Desenho. Não foram enviados movimentos.');
+    if(!identity.includes('EXTRUDER_COUNT:0')||!identity.includes(FIRMWARE_ID)){
+      await this.disconnect();throw Error(`A placa não tem o firmware de desenho (${FIRMWARE_ID}). Não foram enviados movimentos.`);
     }
     await this.command('M84 S0');
     return identity;
@@ -35,14 +53,13 @@ export class MarlinLink {
   async readLoop(){
     let buffer='';const decoder=new TextDecoder();
     try{
-      while(!this.closing){const {value,done}=await this.reader.read();if(done)break;
+      while(!this.closing){const {value,done}=await this.transport.read();if(done)break;
         buffer+=decoder.decode(value,{stream:true}).replace(/\r/g,'\n');
         let index;while((index=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,index);buffer=buffer.slice(index+1);this.feed(line);}
         if(buffer.length>100000)throw Error('Resposta USB demasiado longa.');
       }
     }catch(error){if(!this.closing)this.onLine('Ligação interrompida: '+error.message);}
     finally{
-      this.reader?.releaseLock();
       if(!this.closing){this.connected=false;this.pending?.reject(Error('A ligação USB foi interrompida.'));this.onDisconnect();}
     }
   }
@@ -57,11 +74,11 @@ export class MarlinLink {
       const pending={expect,seen:!expect,lines:[],resolve:value=>finish(resolve,value),reject:error=>finish(reject,error)};
       const timer=setTimeout(()=>pending.reject(Error('Sem resposta da máquina. Interrompe o trabalho e verifica a ligação.')),timeout);
       this.pending=pending;this.onLine('→ '+code);
-      this.writer.write(new TextEncoder().encode(code+'\n')).catch(error=>pending.reject(error));
+      Promise.resolve().then(()=>this.transport.write(new TextEncoder().encode(code+'\n'))).catch(error=>pending.reject(error));
     });
   }
   async sync(){
-    const marker='PEN_SYNC_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+    const marker='DRAWINGBOT_SYNC_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
     return this.command('M118 '+marker,{expect:line=>line.includes(marker),timeout:15000});
   }
   async position(){
@@ -71,19 +88,20 @@ export class MarlinLink {
     return {x:Number(m[1]),y:Number(m[2]),z:Number(m[3])};
   }
   async emergency(){
-    if(this.connected)await this.writer.write(new TextEncoder().encode('M112\n'));
+    if(this.connected)await this.transport.write(new TextEncoder().encode('M112\n'));
     this.pending?.reject(Error('Paragem de emergência. Reinicia a máquina e redefine as referências.'));
     this.onReset();
   }
   async disconnect(){
     this.closing=true;this.connected=false;this.pending?.reject(Error('Ligação terminada.'));
-    try{await this.reader?.cancel();await this.readTask;}catch{}
-    try{this.writer?.releaseLock();await this.port?.close();}catch{}
+    try{await this.transport?.close();}catch{}
+    try{await this.readTask;}catch{}
   }
 }
 export class SimulatedLink {
   constructor({onLine=()=>{}}={}){this.onLine=onLine;this.connected=true;this.pos={x:0,y:0,z:5};this.relative=false;this.simulated=true;this.bedTarget=0;}
-  async sync(){return '';}
+  async connect(){this.connected=true;return "FIRMWARE_NAME:Simulado EXTRUDER_COUNT:0";}
+  async sync(){return "";}
   async command(code){
     this.onLine('→ '+code);await sleep(/^G[01]\s/.test(code)?25:8);
     if(code==='G91')this.relative=true;if(code==='G90')this.relative=false;
