@@ -49,7 +49,7 @@ function finalize(){
     job=composeJob(editor.objects,settings);
     $('size-stat').textContent=`${format(job.bounds.width)} × ${format(job.bounds.height)} mm`;$('paths-stat').textContent=job.metrics.strokes;$('time-stat').textContent=duration(job.metrics.seconds);
     const messages=[...job.errors,...job.warnings];
-    notice(job.errors.length?' error':messages.length?' warning':'',job.errors.length?'!':messages.length?'i':'✓',messages.length?messages.join(' '):'O desenho e a largura da tinta cabem no papel.');
+    notice(job.errors.length?' error':messages.length?' warning':'',job.errors.length?'!':messages.length?'i':'✓',messages.length?messages.join(' '):'Cabe no papel');
   }catch(error){job=null;notice(editor.objects.length?' error':'',editor.objects.length?'!':'i',error.message);for(const id of ['size-stat','paths-stat','time-stat'])$(id).textContent='—';}
   editor.draw({errors:!!job?.errors.length});
   renderMachine();
