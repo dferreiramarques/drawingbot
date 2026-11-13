@@ -60,8 +60,8 @@ criar uma forma; um clique simples cria-a com 40 mm. Um desenho pode ter vários
   É muito mais rápido e serve bem para canetas finas.
 
 A altura indicada é a das maiúsculas. Depois de aplicado, o texto comporta-se como um desenho:
-a largura, a rotação e a posição ajustam-se no painel. «Editar texto» volta a abrir o texto, que
-também fica guardado nos projetos.
+a largura, a rotação e a posição ajustam-se no painel. A ferramenta de texto cria sempre um texto novo;
+para alterar um texto, faz duplo clique nele na mesa (ou usa «Editar texto»). O texto também fica guardado nos projetos.
 
 ## Instalação local
 

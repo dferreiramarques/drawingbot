@@ -196,6 +196,8 @@ export function createEditor({svg,onChange,onSelect,onTool}){
     redo(){if(!future.length)return;history.push(snapshot());const s=future.pop();objects=s.objects;selected=s.selected&&s.objects.some(o=>o.id===s.selected)?s.selected:null;onSelect(selected);changed('commit');},
     get canUndo(){return history.length>0;},get canRedo(){return future.length>0;},
     pointToBed:toBed,
+    // The selected object wins when objects overlap, so double-clicking it edits what you selected.
+    objectAt:event=>{const p=toBed(event),o=find(selected);if(o){const l=toLocal(o,p);if(Math.abs(l.x)<=o.w/2+1.2&&Math.abs(l.y)<=o.h/2+1.2)return o;}return hitObject(p);},
   };
   return api;
 }

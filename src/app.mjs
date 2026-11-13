@@ -241,7 +241,7 @@ function modal(title,body,action,label='Continuar'){
 }
 function showHelp(){
   modal('Do ecrã ao papel.',`<p>O DrawingBot prepara e envia desenhos para a tua CR-10 com o firmware de desenho.</p>
-    <h3>Desenhar na mesa</h3><p>Escolhe uma ferramenta na barra da mesa e arrasta: retângulo, elipse, polígono, estrela, coração, linha ou mão livre. «Aa» escreve texto e a seta importa um SVG (também podes arrastar o ficheiro para a mesa). Com «Selecionar» moves os objetos, os cantos mudam o tamanho e a pega redonda roda. Shift mantém a proporção ou roda de 15 em 15°. Delete apaga, Ctrl+Z desfaz, Ctrl+D duplica, as setas movem 1 mm (Shift: 10 mm).</p>
+    <h3>Desenhar na mesa</h3><p>Escolhe uma ferramenta na barra da mesa e arrasta: retângulo, elipse, polígono, estrela, coração, linha ou mão livre. «Aa» cria sempre um texto novo (duplo clique num texto da mesa para o editar) e a seta importa um SVG (também podes arrastar o ficheiro para a mesa). Com «Selecionar» moves os objetos, os cantos mudam o tamanho e a pega redonda roda. Shift mantém a proporção ou roda de 15 em 15°. Delete apaga, Ctrl+Z desfaz, Ctrl+D duplica, as setas movem 1 mm (Shift: 10 mm).</p>
     <h3>Preenchimentos</h3><p>Qualquer forma fechada pode ser preenchida: cheio, linhas, quadriculado, ondas, ziguezague, concêntrico, espiral ou pontos. O contorno fica meia ponta para dentro, por isso a tinta respeita o tamanho da forma.</p>
     <h3>1 · Liga e define as referências</h3><p>No computador ligado por USB, usa Chrome ou Edge. Com o DrawingBot (Raspberry Pi) a CR-10 liga-se ao Pi e abres a app em <strong>http://drawingbot.local</strong> a partir de qualquer browser da rede. Se não houver USB, exporta o G-code e usa o cartão SD. A origem e o zero Z nunca são recuperados automaticamente depois de um reinício.</p>
     <h3>2 · Deixa a caneta trabalhar pelo peso</h3><p>Com a caneta levantada, faz a origem X/Y. Aproxima a ponta ao papel em passos de 0,1 mm e usa «Definir zero Z». A app define o zero e levanta a caneta. Deixa a folga do suporte absorver as variações.</p>
@@ -348,7 +348,7 @@ $('install').onclick=async()=>{if(installPrompt){await installPrompt.prompt();in
 
 // ---------- Text ----------
 const textTool=createTextTool({toast});
-function openText(target=editor.selected?.kind==='text'?editor.selected:null){
+function openText(target=null){
   // Reopen with the letter height that matches the current size of the text object.
   const spec=target?.text?{...target.text,capHeight:target.text.width?Math.round(target.text.capHeight*target.w/target.text.width*10)/10:target.text.capHeight}:null;
   textTool.open({spec,onApply:(chosen,result)=>{
@@ -367,9 +367,10 @@ function openText(target=editor.selected?.kind==='text'?editor.selected:null){
     toast(chosen.mode==='fill'?'Texto pronto: contorno e enchimento à medida da ponta.':'Texto pronto: um só traço por letra.');
   }});
 }
-$('text-tool').onclick=()=>openText();
+$('text-tool').onclick=()=>openText(null);
 $('obj-edit-text').onclick=()=>openText(editor.selected);
-$('preview').addEventListener('dblclick',()=>{if(editor.selected?.kind==='text')openText(editor.selected);});
+// Double-click a text on the board to edit it; the text tool always starts a new text.
+$('preview').addEventListener('dblclick',event=>{const hit=editor.objectAt(event);if(hit?.kind==='text'){editor.select(hit.id);openText(hit);}});
 document.addEventListener('keydown',event=>{
   const t=event.target;if(event.ctrlKey||event.metaKey||event.altKey||t?.closest?.('input,textarea,select,dialog')||document.querySelector('dialog[open]'))return;
   if(event.key.toLowerCase()==='t'){event.preventDefault();openText(null);}
