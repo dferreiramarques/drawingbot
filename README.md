@@ -87,4 +87,5 @@ O Marlin conserva a licença GPL e os avisos originais dentro da pasta do firmwa
 Os avisos das bibliotecas de geometria estão em `public/THIRD-PARTY.txt` e `public/vendor/`.
 O suporte da caneta é o [Pen Holder for Ender 3 / CR 10](https://www.thingiverse.com/thing:4721453) de umer3d (CC BY 4.0).
 Os tipos de letra da ferramenta de texto (OFL 1.1 e Hershey) estão descritos em `public/fonts/README.txt`.
-O pacote do Pi inclui `serialport` (MIT). Não é atribuída uma licença adicional ao código próprio.
+O pacote do Pi inclui `serialport` (MIT).
+O código próprio do repositório segue a mesma licença do Marlin, a GPL-3.0: ver [LICENSE](LICENSE).
